@@ -1,5 +1,6 @@
 # Folders to ignore
 .idea/
+.pytest_cache/
 **/__pycache__/
 
 # Files to ignore
