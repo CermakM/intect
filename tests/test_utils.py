@@ -1,4 +1,4 @@
-"""Tests for dataset module."""
+"""Tests for utils module."""
 
 import typing
 import unittest
