@@ -12,7 +12,7 @@ class TestDataset(unittest.TestCase):
 
     def test_dataset_from_directory(self):
         """Test the dataset is created properly from directory."""
-        dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET)
+        dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
         dataset.describe()
 
         self.assertIsInstance(dataset, pcr.dataset.Dataset)
@@ -20,10 +20,11 @@ class TestDataset(unittest.TestCase):
 
     def test_dataset_len(self):
         """Test if all the images are loaded into the dataset."""
-        dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET)
+        dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
+        dataset.describe()
 
         expected_len = 0
-        for __, _, walkfiles in os.walk(common.TEST_DATASET):
+        for __, _, walkfiles in os.walk(common.TEST_DATASET_PATH):
             expected_len += sum(1 for _ in walkfiles)
 
         self.assertEqual(expected_len, len(dataset))

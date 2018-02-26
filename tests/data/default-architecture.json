@@ -1,0 +1,42 @@
+{
+  "name": "default",
+  "input_shape": [
+    32,
+    32,
+    3
+  ],
+  "layers": [
+    "conv",
+    "conv",
+    "fcl"
+  ],
+  "activation": [
+    "relu",
+    "relu",
+    "relu"
+  ],
+  "batch_size": 32,
+  "learning_rate": 0.001,
+  "optimizer": "AdamOptimizer",
+  "filters": [
+    6,
+    12
+  ],
+  "filter_shape": [
+    [
+      3,
+      3
+    ],
+    [
+      3,
+      3
+    ]
+  ],
+  "stride": [
+    1,
+    1,
+    1,
+    1
+  ],
+  "padding": "SAME"
+}

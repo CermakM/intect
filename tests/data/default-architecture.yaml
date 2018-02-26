@@ -1,0 +1,25 @@
+name: default
+input_shape: '!!python/tuple [32, 32, 3]'
+layers:
+  - conv
+  - conv
+  - fcl
+activation:
+  - relu
+  - relu
+  - relu
+batch_size: 32
+optimizer: AdamOptimizer
+learning_rate: 0.001
+filter_shape:
+  - '!!python/tuple [3, 3]'
+  - '!!python/tuple [3, 3]'
+filters:
+  - 6
+  - 12
+stride:
+  - 1
+  - 1
+  - 1
+  - 1
+padding: SAME
