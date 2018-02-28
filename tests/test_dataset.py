@@ -47,13 +47,4 @@ class TestDataset(unittest.TestCase):
         self.assertIsInstance(dataset, tf.data.Dataset)
         # dataset is not empty
         self.assertGreater(len(dataset.output_shapes), 0)
-
-    def test_dataset_features(self):
-        """Test that the dataset contains correct feature tensors."""
-        dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
-        pass
-
-    def test_dataset_labels(self):
-        """Test that the dataset contains correct label tensors."""
-        # dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
         pass
