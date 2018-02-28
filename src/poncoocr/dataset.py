@@ -1,37 +1,51 @@
 """Module containing tools to handle data sets."""
 
+import sys
 import typing
 
-from tensorflow.contrib.keras import preprocessing
-
-from . import utils
+import tensorflow as tf
 
 
 class Dataset(object):
+    """Custom data set loader using DirectoryIterator class."""
+
+    def __init__(self):
+        pass
+
+    @staticmethod
+    def from_directory(directory: str,
+                       batch_size=1,
+                       target_size=(32, 32)
+                       ) -> tf.data.Dataset:
+        """Loads a dataset from the given directory using DirectoryIterator.
+
+        returns: `Dataset`
+        """
+        dir_iter = DirectoryIterator(directory, batch_size, target_size)
+        features, labels = dir_iter.features, dir_iter.labels
+
+        return tf.data.Dataset.from_tensor_slices((features, labels))
+
+
+class DirectoryIterator:
     """Base Dataset class."""
 
-    def __init__(self,
-                 images: typing.Generator,
-                 labels: typing.Generator,
-                 classes: dict,
-                 n_samples: int,
-                 target_size: tuple,
-                 img_shape: tuple,
-                 ):
-        if not isinstance(images, typing.Generator):
-            raise TypeError("`images` argument must be of type %s" % typing.Generator)
+    def __init__(self, directory: str, batch_size=1, target_size=(32, 32)):
+        """Traverse directory and load images and labels."""
 
-        if not isinstance(labels, typing.Generator):
-            raise TypeError("`labels` argument must be of type %s" % typing.Generator)
+        # This loads infinite directory generator
+        self._flow = tf.keras.preprocessing.image.ImageDataGenerator().flow_from_directory(
+            directory=directory,
+            batch_size=batch_size,
+            target_size=target_size
+        )
 
-        assert sum(1 for _ in images) == sum(1 for _ in labels), "`images` shape %s does not fit `labels` shape %s"
+        self._classes = self._flow.class_indices,
+        self._samples, = self._flow.samples,
+        self._target_size = self._flow.target_size,
+        self._img_shape = self._flow.image_shape
 
-        self._images = images
-        self._labels = labels
-        self._classes = classes
-        self._samples = n_samples
-        self._target_size = target_size
-        self._img_shape = img_shape
+        self._features, self._labels = list(zip(*[self._flow.next() for _ in range(self._samples)]))
 
     def __len__(self):
         return self._samples
@@ -41,12 +55,18 @@ class Dataset(object):
                       "Image shape: {s._img_shape}"
         return description.format(s=self)
 
-    @property
-    def images(self) -> typing.Generator:
-        return self._images
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        return self._flow.next()
 
     @property
-    def labels(self) -> typing.Generator:
+    def features(self) -> typing.Sequence:
+        return self._features
+
+    @property
+    def labels(self) -> typing.Sequence:
         return self._labels
 
     @property
@@ -61,17 +81,6 @@ class Dataset(object):
     def img_shape(self) -> tuple:
         return self._img_shape
 
-    @classmethod
-    def from_directory(cls, path: str):
-        """Traverse directory and load images and labels."""
-
-        # This loads infinite directory generator
-        flow = preprocessing.image.ImageDataGenerator().flow_from_directory(path)
-
-        images, labels = utils.flow_from_directory(path)
-
-        return cls(images, labels, classes=flow.class_indices, n_samples=flow.samples,
-                   target_size=flow.target_size, img_shape=flow.image_shape)
-
     def describe(self):
         print(self.__str__())
+

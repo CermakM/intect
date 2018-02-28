@@ -67,6 +67,7 @@ class CNNArchitecture(utils.AttrDict):
 
     @classmethod
     def from_json(cls, fp: str):
+        """Loads the architecture from .json file."""
         with open(fp, 'r') as f:
             dct = json.load(f)
 
@@ -75,8 +76,12 @@ class CNNArchitecture(utils.AttrDict):
 
     @classmethod
     def from_yaml(cls, fp: str):
+        """Loads the architecture from a .yaml file.
+        Note: the architecture.yaml has to be in ``safe_load`` format
+        in order to assure correctly loaded architecture.
+        """
         with open(fp, 'r') as f:
-            dct = yaml.load(f)
+            dct = yaml.safe_load(f)
 
         name = dct.pop('name')
         return cls(name, **dct)
@@ -90,10 +95,10 @@ class CNNArchitecture(utils.AttrDict):
 
     def to_yaml(self, fp: str = None):
         if fp is None:
-            return yaml.dump(self.__dict__)
+            return yaml.safe_dump(self.__dict__)
 
         with open(fp, 'w') as f:
-            f.write(yaml.dump(self.__dict__))
+            f.write(yaml.safe_dump(self.__dict__))
 
     def describe(self):
         return self.__dict__.__str__()

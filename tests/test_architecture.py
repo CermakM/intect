@@ -31,6 +31,6 @@ class TestArchitecture(unittest.TestCase):
         import yaml
         arch = pcr.architecture.CNNArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
         with open(common.TEST_ARCHITECTURE_YAML) as f:
-            arch_json = yaml.load(f)
-        self.assertEqual(arch_json, arch.to_yaml())
+            arch_dct = yaml.safe_load(f)
+        self.assertEqual(arch_dct, yaml.safe_load(arch.to_yaml()))
         pass
