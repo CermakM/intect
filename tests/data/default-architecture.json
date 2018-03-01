@@ -1,42 +1,71 @@
 {
+  "layers": [
+    {
+      "activation": "relu",
+      "params": {
+        "padding": "SAME",
+        "stride": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "filter_shape": [
+          3,
+          3
+        ],
+        "pool_stride": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "name": "conv",
+      "output_channels": 16
+    },
+    {
+      "activation": "relu",
+      "params": {
+        "padding": "SAME",
+        "stride": [
+          1,
+          1,
+          1,
+          1
+        ],
+        "filter_shape": [
+          3,
+          3
+        ],
+        "pool_stride": [
+          1,
+          1,
+          1,
+          1
+        ]
+      },
+      "name": "conv",
+      "output_channels": 16
+    },
+    {
+      "activation": "relu",
+      "name": "fcl",
+      "output_channels": 1028
+    }
+  ],
+  "optimizer": "AdamOptimizer",
   "name": "default",
+  "learning_rate": 0.001,
   "input_shape": [
+    "None",
     32,
     32,
     3
   ],
-  "layers": [
-    "conv",
-    "conv",
-    "fcl"
-  ],
-  "activation": [
-    "relu",
-    "relu",
-    "relu"
-  ],
   "batch_size": 32,
-  "learning_rate": 0.001,
-  "optimizer": "AdamOptimizer",
-  "filters": [
-    6,
-    12
-  ],
-  "filter_shape": [
-    [
-      3,
-      3
-    ],
-    [
-      3,
-      3
-    ]
-  ],
-  "stride": [
-    1,
-    1,
-    1,
-    1
-  ],
-  "padding": "SAME"
+  "output_shape": [
+    "None",
+    62
+  ]
 }

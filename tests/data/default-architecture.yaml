@@ -1,13 +1,24 @@
-activation: [relu, relu, relu]
-batch_size: 32
-filter_shape:
-  - [3, 3]
-  - [3, 3]
-filters: [6, 12]
-input_shape: [32, 32, 3]
-layers: [conv, conv, fcl]
-learning_rate: 0.001
 name: default
+
+input_shape: [None, 32, 32, 3]
+output_shape: [None, 62]  # charset size
+
 optimizer: AdamOptimizer
-padding: SAME
-stride: [1, 1, 1, 1]
+batch_size: 32
+learning_rate: 0.001
+
+layers:
+  - &conv
+    name: conv
+    activation: relu
+    output_channels: 16
+    params:
+      padding: SAME
+      stride: [1, 1, 1, 1]
+      pool_stride: [1, 1, 1, 1]
+      filter_shape: [3, 3]
+  - *conv
+  -
+    name: fcl
+    activation: relu
+    output_channels: 1028

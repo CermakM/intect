@@ -33,4 +33,3 @@ class TestArchitecture(unittest.TestCase):
         with open(common.TEST_ARCHITECTURE_YAML) as f:
             arch_dct = yaml.safe_load(f)
         self.assertEqual(arch_dct, yaml.safe_load(arch.to_yaml()))
-        pass
