@@ -17,7 +17,7 @@ _layer_dict = dict(
 )
 
 
-class CNN(object):
+class Model(object):
 
     __model_names = set()
 
@@ -40,22 +40,28 @@ class CNN(object):
             self._name = tf.Variable(rand_name, dtype=tf.string)
             self.__model_names.add(self._name)
 
-        self._x = tf.placeholder(tf.float32, shape=input_shape, name='x')
-        self._labels = tf.placeholder(tf.float32, shape=output_shape, name='labels')
+        self._x = tf.placeholder(tf.float32, shape=(None, *input_shape), name='x')
+        self._labels = tf.placeholder(tf.float32, shape=(None, *output_shape), name='labels')
 
         self._batch_size = tf.placeholder(tf.uint8, name='batch_size')
         self._learning_rate = tf.placeholder(tf.float32, name='learning_rate')
 
-        self._layers = hidden_layers or list()
+        self._layers = [self._x]
+        if hidden_layers is not None:
+            self._layers.extend(hidden_layers)
         if params is not None:
             self._params = utils.AttrDict(**params)
         else:
             self._params = dict()
 
     def __repr__(self):
-        return "<class 'poncoocr.model.CNN'" \
+        return "<class 'poncoocr.model.Model'" \
                "  name: {s._name}" \
                "  layers: {s._layers}>".format(s=self)
+
+    @property
+    def session(self):
+        return self._session
 
     @property
     def x(self):
@@ -82,7 +88,7 @@ class CNN(object):
         return self._learning_rate
 
     @classmethod
-    def from_architecture(cls, arch: architecture.CNNArchitecture):
+    def from_architecture(cls, arch: architecture.ModelArchitecture):
         """Initialize the model from the given Architecture"""
         # load network parameters
         if arch.name == 'default':
@@ -123,20 +129,12 @@ class CNN(object):
     def set_parameters(self, dct: dict):
         self._params = utils.AttrDict(**dct)
 
-    def train(self):
-        raise NotImplementedError
-
-    def predict(self):
-        raise NotImplementedError
-
     def save(self):
         raise NotImplementedError
 
     def add_layer(self, layer: typing.Union[layers.ConvLayer, layers.FullyConnectedLayer]):
         """Add layer to the model."""
-        # TODO: check if shapes do not agree
-        if not self._layers and layer.input_data is None:
-            raise AttributeError("The input layer must have `input_data` and `input_shape` specified.")
+        # TODO: check if shapes agree
 
         if self._layers:
             layer.connect(self._layers[-1])

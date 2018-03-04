@@ -1,14 +1,47 @@
 """Module containing common utility functions."""
 
-import numpy as np
-import typing
+import time
+import threading
+
+import tensorflow as tf
 
 from collections.abc import Mapping
 from matplotlib.pyplot import plot as plt
-from tensorflow.contrib.keras import preprocessing
 
 
 # CLASSES
+
+class Timeout(threading.Thread):
+    """Initialize time out timer which raises an exception when the deadline is exceeded."""
+
+    def __init__(self, timeout: int, thread_id: int = None, name: str = None, func=None):
+        """Initialize timer.
+        :param timeout: int, time in seconds
+        """
+        threading.Thread.__init__(self)
+        self.threadID = thread_id
+        self.name = name
+
+        self._timeout = timeout
+        self._time = 0
+        self._run = False
+        if func is not None:
+            self._message = "function `%s` exceeded deadline." % func.__code__.co_name
+        else:
+            self._message = "deadline exceeded: `%d` seconds" % timeout
+
+    def run(self):
+        self._run = True
+        while self._run:
+            time.sleep(1)
+            self._time += 1
+            if self._time >= self._timeout:
+                raise tf.errors.DeadlineExceededError(None, None, message=self._message)
+
+    def stop(self):
+        self._run = False
+        self._time = 0
+
 
 class AttrDict(Mapping):
     """A class to convert a nested Dictionary into an object with key-values

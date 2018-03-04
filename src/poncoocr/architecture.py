@@ -8,8 +8,8 @@ import typing
 from . import utils
 
 
-class CNNArchitecture(utils.AttrDict):
-    """Class representing CNN architecture and hyper parameters."""
+class ModelArchitecture(utils.AttrDict):
+    """Class representing model architecture and hyper parameters."""
 
     def __init__(self,
                  name: str,
@@ -39,7 +39,7 @@ class CNNArchitecture(utils.AttrDict):
         super().__init__(**kwargs)
 
     def __repr__(self):
-        return "<class 'poncoocr.architecture.CNNArchitecture'"\
+        return "<class 'poncoocr.architecture.ModelArchitecture'"\
                "  name: '{s.name}'"\
                "  layers: {s.layers}>".format(s=self)
 

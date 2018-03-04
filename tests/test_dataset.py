@@ -14,7 +14,7 @@ from src import poncoocr as pcr
 class TestDirectoryIterator(unittest.TestCase):
 
     def test_directory_iterator(self):
-        """Test the dataset is created properly from directory."""
+        """Test that the dataset is created properly from directory."""
         dir_iter = pcr.dataset.DirectoryIterator(directory=common.TEST_DATASET_PATH)
         dir_iter.describe()
 
@@ -50,6 +50,7 @@ class TestDataset(unittest.TestCase):
         self.assertFalse(not dataset.output_shapes)
 
     def test_dataset_next(self):
+        """Test that dataset returns correct iterator."""
         dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
 
         self.assertIsInstance(dataset.batch(32), tf.data.Dataset)
@@ -58,12 +59,13 @@ class TestDataset(unittest.TestCase):
         _ = iterator.get_next()
 
     def test_dataset_iterator_values(self):
+        """Test that the iterator produces correct shapes during tf.Session."""
         dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
         dataset = dataset.shuffle(buffer_size=20).repeat(2).batch(5)
         iterator = dataset.make_one_shot_iterator()
         # iterate over the labels twice and check the shape
-        sess = tf.Session()  # TODO: make test graph namespace?
-        features, labels = sess.run(iterator.get_next())
+        with tf.Session() as sess:
+            features, labels = sess.run(iterator.get_next())
 
         self.assertIsNotNone(features)
         self.assertIsNotNone(labels)

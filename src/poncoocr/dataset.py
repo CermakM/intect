@@ -1,6 +1,5 @@
 """Module containing tools to handle data sets."""
 
-import sys
 import typing
 
 import tensorflow as tf
