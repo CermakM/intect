@@ -10,23 +10,30 @@ import tensorflow as tf
 from . import common
 from src import poncoocr as pcr
 
-test_dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
+
+TEST_DATASET = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
 
 
 class TestLayers(unittest.TestCase):
 
     def test_layer(self):
-        layer = pcr.layers.Layer(input_data=test_dataset.images,
-                                 input_channels=test_dataset.img_shape[2],  # (width, hight, channels)
+        layer = pcr.layers.Layer(input_data=TEST_DATASET.batch(32),
                                  output_channels=10,  # just keep the layer simple
                                  activation=tf.nn.relu,
                                  name="test-layer",
                                  )
         self.assertIsInstance(layer, pcr.layers.Layer)
 
+    def test_shape(self):
+        layer = pcr.layers.Layer(input_data=TEST_DATASET.batch(32),
+                                 output_channels=10,  # just keep the layer simple
+                                 activation=tf.nn.relu,
+                                 name="test-layer",
+                                 )
+        self.assertEqual(layer.shape, (None, 32, 32, 10))
+
     def test_layer_activate(self):
-        layer = pcr.layers.Layer(input_data=test_dataset.images,
-                                 input_channels=test_dataset.img_shape[2],  # (width, hight, channels)
+        layer = pcr.layers.Layer(input_data=TEST_DATASET.batch(32),
                                  output_channels=10,  # just keep the layer simple
                                  activation=tf.nn.relu,
                                  name="test-layer",
@@ -35,8 +42,7 @@ class TestLayers(unittest.TestCase):
             _ = layer.activate()
 
     def test_conv_layer(self):
-        conv_layer = pcr.layers.ConvLayer(input_data=test_dataset.images,
-                                          input_channels=test_dataset.img_shape[2],  # (width, hight, channels)
+        conv_layer = pcr.layers.ConvLayer(input_data=TEST_DATASET.batch(32),
                                           output_channels=10,  # just keep the layer simple
                                           activation=tf.nn.relu,
                                           name="test-conv-layer",
@@ -45,8 +51,7 @@ class TestLayers(unittest.TestCase):
 
     def test_fcl_layer(self):
         fcl_layer = pcr.layers.FullyConnectedLayer(
-            input_data=test_dataset.images,
-            input_channels=test_dataset.img_shape[2],  # (width, hight, channels)
+            input_data=TEST_DATASET.batch(32),
             output_channels=10,  # just keep the layer simple
             activation=tf.nn.relu,
             name="test-fcl-layer",
@@ -54,8 +59,7 @@ class TestLayers(unittest.TestCase):
         self.assertIsInstance(fcl_layer, pcr.layers.FullyConnectedLayer)
 
     def test_conv_layer_activate(self):
-        conv_layer = pcr.layers.ConvLayer(input_data=test_dataset.images,
-                                          input_channels=test_dataset.img_shape[2],  # (width, hight, channels)
+        conv_layer = pcr.layers.ConvLayer(input_data=TEST_DATASET.batch(32),
                                           output_channels=10,  # just keep the layer simple
                                           activation=tf.nn.relu,
                                           name="test-conv-layer",
@@ -65,8 +69,7 @@ class TestLayers(unittest.TestCase):
 
     def test_fcl_layer_activate(self):
         fcl_layer = pcr.layers.FullyConnectedLayer(
-            input_data=test_dataset.images,
-            input_channels=test_dataset.img_shape[2],  # (width, hight, channels)
+            input_data=TEST_DATASET.batch(32),
             output_channels=10,  # just keep the layer simple
             activation=tf.nn.relu,
             name="test-fcl-layer",
