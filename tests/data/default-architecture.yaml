@@ -1,7 +1,7 @@
 name: default
 
-input_shape: [None, 32, 32, 3]
-output_shape: [None, 62]  # charset size
+input_shape: [32, 32, 3]
+output_shape: [62]  # charset size
 
 optimizer: AdamOptimizer
 batch_size: 32
@@ -22,3 +22,4 @@ layers:
     name: fcl
     activation: relu
     output_channels: 1028
+    params: {}  # necessary to provide empty dict (maybe fix later)

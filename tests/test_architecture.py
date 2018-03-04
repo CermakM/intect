@@ -14,11 +14,15 @@ class TestArchitecture(unittest.TestCase):
         arch = pcr.architecture.CNNArchitecture.from_json(common.TEST_ARCHITECTURE_JSON)
 
         self.assertIsInstance(arch, pcr.architecture.CNNArchitecture)
+        self.assertIsInstance(arch.layers, list)
+        self.assertFalse(not arch.layers)
 
     def test_architecture_from_yml(self):
         arch = pcr.architecture.CNNArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
 
         self.assertIsInstance(arch, pcr.architecture.CNNArchitecture)
+        self.assertIsInstance(arch.layers, list)
+        self.assertFalse(not arch.layers)
 
     def test_architecture_to_json(self):
         import json

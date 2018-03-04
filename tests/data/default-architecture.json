@@ -1,7 +1,9 @@
 {
   "layers": [
     {
+      "name": "conv",
       "activation": "relu",
+      "output_channels": 16,
       "params": {
         "padding": "SAME",
         "stride": [
@@ -20,12 +22,12 @@
           1,
           1
         ]
-      },
-      "name": "conv",
-      "output_channels": 16
+      }
     },
     {
+      "name": "conv",
       "activation": "relu",
+      "output_channels": 16,
       "params": {
         "padding": "SAME",
         "stride": [
@@ -44,28 +46,25 @@
           1,
           1
         ]
-      },
-      "name": "conv",
-      "output_channels": 16
+      }
     },
     {
-      "activation": "relu",
       "name": "fcl",
-      "output_channels": 1028
+      "activation": "relu",
+      "output_channels": 1028,
+      "params": {}
     }
   ],
   "optimizer": "AdamOptimizer",
   "name": "default",
   "learning_rate": 0.001,
   "input_shape": [
-    "None",
     32,
     32,
     3
   ],
   "batch_size": 32,
   "output_shape": [
-    "None",
     62
   ]
 }

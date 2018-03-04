@@ -3,13 +3,14 @@
 import numpy as np
 import typing
 
+from collections.abc import Mapping
 from matplotlib.pyplot import plot as plt
 from tensorflow.contrib.keras import preprocessing
 
 
 # CLASSES
 
-class AttrDict(object):
+class AttrDict(Mapping):
     """A class to convert a nested Dictionary into an object with key-values
     accessibly using attribute notation (AttributeDict.attribute) instead of
     key notation (Dict["key"]). This class recursively sets Dicts to objects,
@@ -23,6 +24,13 @@ class AttrDict(object):
                 self.__dict__[key] = AttrDict(**value)
             else:
                 self.__dict__[key] = value
+
+    def __iter__(self):
+        for k in self.__dict__:
+            yield k
+
+    def __len__(self):
+        return len(self.__dict__)
 
     def __getitem__(self, key):
         """

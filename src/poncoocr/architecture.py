@@ -19,12 +19,10 @@ class CNNArchitecture(utils.AttrDict):
                  optimizer: str = 'adam',
                  batch_size: int = 32,
                  learning_rate: float = 1E-3,
-                 **kwargs,
-                 ):
+                 **kwargs):
         """Initialize architecture of a Convolutional Neural Network."""
         # obligatory
         self.name = name
-        self.layers = layers
 
         self.input_shape = input_shape
         self.output_shape = output_shape
@@ -34,8 +32,16 @@ class CNNArchitecture(utils.AttrDict):
         self.learning_rate = learning_rate
         self.optimizer = optimizer
 
-        # load the rest of the values as attrdict
+        # initialize the layers as an attr dicts
+        self.layers = [utils.AttrDict(**layer) for layer in layers]
+
+        # load the rest of the values as attr dict
         super().__init__(**kwargs)
+
+    def __repr__(self):
+        return "<class 'poncoocr.architecture.CNNArchitecture'"\
+               "  name: '{s.name}'"\
+               "  layers: {s.layers}>".format(s=self)
 
     @classmethod
     def from_json(cls, fp: str):
@@ -43,8 +49,7 @@ class CNNArchitecture(utils.AttrDict):
         with open(fp, 'r') as f:
             dct = json.load(f)
 
-        name = dct.pop('name')
-        return cls(name, **dct)
+        return cls(**dct)
 
     @classmethod
     def from_yaml(cls, fp: str):
