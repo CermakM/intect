@@ -15,8 +15,7 @@ class Dataset(object):
     @staticmethod
     def from_directory(directory: str,
                        batch_size=1,
-                       target_size=(32, 32)
-                       ) -> tf.data.Dataset:
+                       target_size=(32, 32)) -> tf.data.Dataset:
         """Loads a dataset from the given directory using DirectoryIterator.
 
         returns: `Dataset`

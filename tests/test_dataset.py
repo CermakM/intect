@@ -3,6 +3,7 @@
 import os
 import unittest
 
+import numpy as np
 import tensorflow as tf
 
 # The imports will need to be fixed to test installed version instead of the dev one
@@ -46,5 +47,29 @@ class TestDataset(unittest.TestCase):
         dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
         self.assertIsInstance(dataset, tf.data.Dataset)
         # dataset is not empty
-        self.assertGreater(len(dataset.output_shapes), 0)
-        pass
+        self.assertFalse(not dataset.output_shapes)
+
+    def test_dataset_next(self):
+        dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
+
+        self.assertIsInstance(dataset.batch(32), tf.data.Dataset)
+
+        iterator = dataset.make_one_shot_iterator()
+        _ = iterator.get_next()
+
+    def test_dataset_iterator_values(self):
+        dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
+        dataset = dataset.shuffle(buffer_size=20).repeat(2).batch(5)
+        iterator = dataset.make_one_shot_iterator()
+        # iterate over the labels twice and check the shape
+        sess = tf.Session()  # TODO: make test graph namespace?
+        features, labels = sess.run(iterator.get_next())
+
+        self.assertIsNotNone(features)
+        self.assertIsNotNone(labels)
+        features_shape, labels_shape = np.array(features).shape, np.array(labels).shape
+
+        # 10 test images of shape (32, 32, 3), repeated 2 -> shape (10, 2, 32, 32, 3)
+        self.assertEqual(features_shape, (10, 2, 32, 32, 3))
+        # 10 labels for the images repeated 2 times, 5 classes -> shape (10, 2, 5)
+        self.assertEqual(labels_shape, (10, 2, 5))
