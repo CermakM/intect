@@ -61,22 +61,26 @@ class TestModel(unittest.TestCase):
 
         self.assertFalse(not model.hidden_layers)
 
-    # def test_model_add_pool_layer(self):
-    #     model = pcr.model.Model(inputs=_x, labels=_labels)
-    #     model.add_max_pooling_layer(
-    #
-    #     )
-    #
-    #     self.assertFalse(not model.hidden_layers)
-    #
-    # def test_model_add_dense_layer(self):
-    #     """Test adding layer to a model."""
-    #     model = pcr.model.Model(inputs=_x, labels=_labels)
-    #     model.add_dense_layer(
-    #
-    #     )
-    #
-    #     self.assertFalse(not model.hidden_layers)
+    def test_model_add_pool_layer(self):
+        model = pcr.model.Model(inputs=_features, labels=_labels)
+        self.assertTrue(not model.hidden_layers)
+        model.add_max_pooling_layer(
+            pool_size=(2, 2),
+            strides=2,
+        )
+
+        self.assertFalse(not model.hidden_layers)
+
+    def test_model_add_dense_layer(self):
+        """Test adding layer to a model."""
+        model = pcr.model.Model(inputs=_features, labels=_labels)
+        self.assertTrue(not model.hidden_layers)
+        model.add_dense_layer(
+            units=64,
+            activation=tf.nn.relu,
+        )
+
+        self.assertFalse(not model.hidden_layers)
 
     # def test_model_save(self):
     #     arch = pcr.architecture.ModelArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
