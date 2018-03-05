@@ -1,20 +1,13 @@
 """Module containing model of convolutional neural network for the poncoocr engine."""
 
+import sys
+import tempfile
 import typing
-import tensorflow as tf
 
 import names
+import tensorflow as tf
 
-from . import architecture, utils
-from . import layers
-
-_activation_dict = dict(
-   relu=tf.nn.relu, sigmoid=tf.nn.sigmoid, tanh=tf.nn.tanh
-)
-
-_layer_dict = dict(
-    conv=layers.ConvLayer, fcl=layers.FullyConnectedLayer
-)
+from . import architecture
 
 
 class Model(object):
@@ -22,46 +15,42 @@ class Model(object):
     __model_names = set()
 
     def __init__(self,
-                 input_shape,
-                 output_shape,
-                 hidden_layers: list = None,
+                 inputs,
+                 labels,
                  name: str = None,
                  params: dict = None):
         """Initialize the model."""
         # initialize the tf session
         tf.reset_default_graph()
-        self._session = tf.Session()
 
         if name is None:
             # Generate some random name
             rand_name = names.get_first_name(gender='female')
             while rand_name in self.__model_names:
                 rand_name = names.get_first_name(gender='female')
-            self._name = tf.Variable(rand_name, dtype=tf.string)
+            self._name = rand_name
             self.__model_names.add(self._name)
 
-        self._x = tf.placeholder(tf.float32, shape=(None, *input_shape), name='x')
-        self._labels = tf.placeholder(tf.float32, shape=(None, *output_shape), name='labels')
-
-        self._batch_size = tf.placeholder(tf.uint8, name='batch_size')
-        self._learning_rate = tf.placeholder(tf.float32, name='learning_rate')
+        self._x = tf.placeholder(tf.float32, shape=inputs.shape)
+        self._labels = tf.placeholder(tf.float32, shape=labels.shape)
 
         self._layers = [self._x]
-        if hidden_layers is not None:
-            self._layers.extend(hidden_layers)
-        if params is not None:
-            self._params = utils.AttrDict(**params)
-        else:
-            self._params = dict()
+
+        if params is None:
+            params = dict()
+
+        # Configurable and directly accessible properties
+        self.batch_size = tf.constant(getattr(params, 'batch_size', 32), tf.uint8)
+        self.learning_rate = tf.constant(getattr(params, 'learning_rate', 1E-4), tf.float32)
+        self.optimizer = getattr(tf.train, getattr(params, 'optimizer', 'AdamOptimizer'), tf.train.AdamOptimizer)
+
+        # Directory to save the model to
+        self.model_dir = getattr(params, 'model_dir', tempfile.mkdtemp(prefix=self._name))
 
     def __repr__(self):
         return "<class 'poncoocr.model.Model'" \
                "  name: {s._name}" \
                "  layers: {s._layers}>".format(s=self)
-
-    @property
-    def session(self):
-        return self._session
 
     @property
     def x(self):
@@ -72,23 +61,23 @@ class Model(object):
         return self._labels
 
     @property
+    def logits(self):
+        return self._layers[-1]
+
+    @property
     def name(self):
         return self._name
 
     @property
+    def input_layer(self):
+        return self._layers[0]
+
+    @property
     def hidden_layers(self):
-        return tuple(self._layers)
-
-    @property
-    def batch_size(self):
-        return self._batch_size
-
-    @property
-    def learning_rate(self):
-        return self._learning_rate
+        return tuple(self._layers[1:])
 
     @classmethod
-    def from_architecture(cls, arch: architecture.ModelArchitecture):
+    def from_architecture(cls, inputs, labels, arch: architecture.ModelArchitecture, params: dict = None):
         """Initialize the model from the given Architecture"""
         # load network parameters
         if arch.name == 'default':
@@ -96,47 +85,125 @@ class Model(object):
         else:
             name = arch.name
 
-        batch_size = arch.batch_size
-        learning_rate = arch.learning_rate
-        optimizer = getattr(tf.train, arch.optimizer, tf.train.AdamOptimizer)
-        model = cls(
-            input_shape=arch.input_shape,
-            output_shape=arch.output_shape,
-            name=name
+        arch_params = dict(
+            # model parameters
+            batch_size=arch.batch_size,
+            learning_rate=arch.learning_rate,
+            optimizer=getattr(tf.train, arch.optimizer, tf.train.AdamOptimizer),
         )
 
-        model.set_parameters(dict(batch_size=batch_size,
-                                  learning_rat=learning_rate,
-                                  optimizer=optimizer)
-                             )
+        if params:
+            arch_params.update(params)
+
+        model = cls(
+            inputs=inputs,
+            labels=labels,
+            name=name,
+            params=params
+        )
 
         # Load each layer from architecture and add it to the model
-        input_layer = model.x
-        for layer_data in arch.layers:
-            # Construct a layer object
-            layer = _layer_dict[layer_data.name](
-                name=layer_data.name,
-                input_data=input_layer,
-                output_channels=layer_data.output_channels,
-                activation=layer_data.activation,
-                **layer_data.params
-            )
-            model.add_layer(layer)
-            input_layer = layer
+        for layer in arch.layers:
+            # Construct a layer by the type specified in the architecture
+            config = layer.params
+
+            if layer.type == 'conv2d':
+                model.add_conv_layer(**config)
+
+            elif layer.type == 'max_pooling2d':
+                model.add_max_pooling_layer(**config)
+
+            elif layer.type == 'dense':
+                model.add_dense_layer(**config)
+
+            else:
+                print("Invalid type of layer provided: `%s`. Skipping." % layer.type, file=sys.stderr)
 
         return model
 
-    def set_parameters(self, dct: dict):
-        self._params = utils.AttrDict(**dct)
+    def add_conv_layer(self,
+                       filters: int,
+                       kernel_size: typing.Union[typing.Sequence, tf.TensorShape],
+                       activation: typing.Union[typing.Callable, str],
+                       strides: typing.Tuple[int, int] = (1, 1),
+                       padding='same',
+                       name=None,
+                       *args, **kwargs):
+
+        # If activation is provided as a string, i.e `relu`, get the corresponding activation function
+        if isinstance(activation, str):
+            activation = getattr(tf.nn, activation, None)
+
+        # Uniquify layer name
+        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'conv'), id=len(self._layers))
+
+        with tf.name_scope(self._name):
+            # initialize weights
+            conv = tf.layers.conv2d(
+                inputs=self._layers[-1],
+                filters=filters,
+                activation=activation,
+                kernel_size=kernel_size,
+                padding=padding,
+                strides=strides,
+                name=layer_name,
+                *args, **kwargs
+            )
+
+            # Add summaries
+            # TODO
+
+        self._layers.append(conv)
+
+    def add_dense_layer(self,
+                        units: int,
+                        activation: typing.Union[typing.Callable, str],
+                        name=None,
+                        *args, **kwargs):
+
+        # If activation is provided as a string, i.e `relu`, get the corresponding activation function
+        if isinstance(activation, str):
+            activation = getattr(tf.nn, activation, None)
+
+        # Uniquify layer name
+        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'dense'), id=len(self._layers))
+
+        with tf.name_scope(self._name):
+            dense = tf.layers.dense(
+                inputs=self._layers[-1],
+                units=units,
+                activation=activation,
+                name=layer_name,
+                *args, **kwargs
+            )
+
+            # add summaries
+            # TODO
+
+        self._layers.append(dense)
+
+    def add_max_pooling_layer(self,
+                              pool_size: typing.Union[typing.Sequence, tf.TensorShape],
+                              strides: int = 2,
+                              name=None,
+                              *args, **kwargs):
+
+        # Uniquify layer name
+        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'pool'), id=len(self._layers))
+
+        with tf.name_scope(self._name):
+            pool = tf.layers.max_pooling2d(
+                inputs=self._layers[-1],
+                pool_size=pool_size,
+                strides=strides,
+                name=layer_name,
+                *args, **kwargs
+            )
+
+            self._layers.append(pool)
+
+    def reshape(self):
+        pass
 
     def save(self):
         raise NotImplementedError
-
-    def add_layer(self, layer: typing.Union[layers.ConvLayer, layers.FullyConnectedLayer]):
-        """Add layer to the model."""
-        # TODO: check if shapes agree
-
-        if self._layers:
-            layer.connect(self._layers[-1])
-
-        self._layers.append(layer)

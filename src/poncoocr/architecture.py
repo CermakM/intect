@@ -14,8 +14,6 @@ class ModelArchitecture(utils.AttrDict):
     def __init__(self,
                  name: str,
                  layers: typing.Sequence,
-                 input_shape: typing.Sequence,
-                 output_shape: typing.Sequence,
                  optimizer: str = 'adam',
                  batch_size: int = 32,
                  learning_rate: float = 1E-3,
@@ -23,9 +21,6 @@ class ModelArchitecture(utils.AttrDict):
         """Initialize architecture of a Convolutional Neural Network."""
         # obligatory
         self.name = name
-
-        self.input_shape = input_shape
-        self.output_shape = output_shape
 
         # optional
         self.batch_size = batch_size

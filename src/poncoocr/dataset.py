@@ -68,7 +68,7 @@ class DirectoryIterator:
         return self._labels
 
     @property
-    def classes(self) -> dict:
+    def classes(self):
         return self._classes
 
     @property
@@ -81,4 +81,3 @@ class DirectoryIterator:
 
     def describe(self):
         print(self.__str__())
-

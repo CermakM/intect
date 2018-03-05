@@ -1,8 +1,5 @@
 name: default
 
-input_shape: [32, 32, 3]
-output_shape: [62]  # charset size
-
 optimizer: AdamOptimizer
 batch_size: 32
 learning_rate: 0.001
@@ -10,16 +7,23 @@ learning_rate: 0.001
 layers:
   - &conv
     name: conv
-    activation: relu
-    output_channels: 16
+    type: conv2d
     params:
+      activation: relu
+      filters: 16
       padding: SAME
-      stride: [1, 1, 1, 1]
-      pool_stride: [1, 1, 1, 1]
-      filter_shape: [3, 3]
+      strides: [1, 1]
+      kernel_size: [3, 3]
+  - &pool
+    name: pool
+    type: max_pooling2d
+    params:
+      pool_size: [2, 2]
+      strides: 1
   - *conv
-  -
+  - &fcl
     name: fcl
-    activation: relu
-    output_channels: 1028
-    params: {}  # necessary to provide empty dict (maybe fix later)
+    type: dense
+    params:
+      activation: relu
+      units: 1024

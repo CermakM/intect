@@ -3,8 +3,12 @@
 import os
 
 
-TEST_DATASET_PATH = os.path.join(os.path.dirname(__file__), 'data/test_data/')
-TEST_IMAGE_SAMPLE = os.path.join(TEST_DATASET_PATH, 'default.png')
+TEST_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
+TEST_DATASET_PATH = os.path.join(TEST_DATA_PATH, 'test_data/')
 
-TEST_ARCHITECTURE_JSON = os.path.join(os.path.dirname(__file__), 'data/default-architecture.json')
-TEST_ARCHITECTURE_YAML = os.path.join(os.path.dirname(__file__), 'data/default-architecture.yaml')
+TEST_IMAGE_SAMPLE = os.path.join(TEST_DATA_PATH, 'default.png')
+
+TEST_ARCHITECTURE_JSON = os.path.join(TEST_DATA_PATH, 'default-architecture.json')
+TEST_ARCHITECTURE_YAML = os.path.join(TEST_DATA_PATH, 'default-architecture.yaml')
+
+TEST_MODEL_PATH = os.path.join(TEST_DATA_PATH, 'default-model')
