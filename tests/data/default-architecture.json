@@ -1,70 +1,61 @@
 {
   "layers": [
     {
-      "name": "conv",
-      "activation": "relu",
-      "output_channels": 16,
+      "type": "conv2d",
       "params": {
         "padding": "SAME",
-        "stride": [
-          1,
-          1,
+        "strides": [
           1,
           1
         ],
-        "filter_shape": [
+        "activation": "relu",
+        "filters": 16,
+        "kernel_size": [
           3,
           3
-        ],
-        "pool_stride": [
-          1,
-          1,
-          1,
-          1
         ]
-      }
+      },
+      "name": "conv"
     },
     {
-      "name": "conv",
-      "activation": "relu",
-      "output_channels": 16,
+      "type": "max_pooling2d",
+      "params": {
+        "strides": 1,
+        "pool_size": [
+          2,
+          2
+        ]
+      },
+      "name": "pool"
+    },
+    {
+      "type": "conv2d",
       "params": {
         "padding": "SAME",
-        "stride": [
-          1,
-          1,
+        "strides": [
           1,
           1
         ],
-        "filter_shape": [
+        "activation": "relu",
+        "filters": 16,
+        "kernel_size": [
           3,
           3
-        ],
-        "pool_stride": [
-          1,
-          1,
-          1,
-          1
         ]
-      }
+      },
+      "name": "conv"
     },
     {
-      "name": "fcl",
-      "activation": "relu",
-      "output_channels": 1028,
-      "params": {}
+      "type": "dense",
+      "params": {
+        "units": 1024,
+        "activation": "relu"
+      },
+      "name": "fcl"
     }
   ],
+  "learning_rate": 0.001,
   "optimizer": "AdamOptimizer",
   "name": "default",
-  "learning_rate": 0.001,
-  "input_shape": [
-    32,
-    32,
-    3
-  ],
-  "batch_size": 32,
-  "output_shape": [
-    62
-  ]
+  "batch_size": 32
 }

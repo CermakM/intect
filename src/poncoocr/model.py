@@ -20,9 +20,6 @@ class Model(object):
                  name: str = None,
                  params: dict = None):
         """Initialize the model."""
-        # initialize the tf session
-        tf.reset_default_graph()
-
         if name is None:
             # Generate some random name
             rand_name = names.get_first_name(gender='female')
@@ -113,6 +110,9 @@ class Model(object):
             elif layer.type == 'max_pooling2d':
                 model.add_max_pooling_layer(**config)
 
+            elif layer.type == 'flatten':
+                model.add_flatten_layer()
+
             elif layer.type == 'dense':
                 model.add_dense_layer(**config)
 
@@ -124,7 +124,7 @@ class Model(object):
     def add_conv_layer(self,
                        filters: int,
                        kernel_size: typing.Union[typing.Sequence, tf.TensorShape],
-                       activation: typing.Union[typing.Callable, str],
+                       activation: typing.Union[typing.Callable, str] = None,
                        strides: typing.Tuple[int, int] = (1, 1),
                        padding='same',
                        name=None,
@@ -155,9 +155,12 @@ class Model(object):
 
         self._layers.append(conv)
 
+    def add_flatten_layer(self):
+        self._layers.append(tf.layers.flatten(inputs=self._layers[-1]))
+
     def add_dense_layer(self,
                         units: int,
-                        activation: typing.Union[typing.Callable, str],
+                        activation: typing.Union[typing.Callable, str] = None,
                         name=None,
                         *args, **kwargs):
 
@@ -201,9 +204,6 @@ class Model(object):
             )
 
             self._layers.append(pool)
-
-    def reshape(self):
-        pass
 
     def save(self):
         raise NotImplementedError

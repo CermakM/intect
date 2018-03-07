@@ -21,9 +21,19 @@ layers:
       pool_size: [2, 2]
       strides: 1
   - *conv
+  - &flat
+    name: flat
+    type: flatten
+    params:
+      null
   - &fcl
     name: fcl
     type: dense
     params:
       activation: relu
       units: 1024
+  -
+    name: logits
+    type: dense
+    params:
+      units: 5
