@@ -71,6 +71,9 @@ class AttrDict(Mapping):
         """
         return getattr(self, key)
 
+    def __str__(self):
+        return self.__dict__.__str__()
+
 
 # FUNCTIONS
 
