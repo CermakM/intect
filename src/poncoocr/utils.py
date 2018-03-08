@@ -65,14 +65,17 @@ class AttrDict(Mapping):
     def __len__(self):
         return len(self.__dict__)
 
+    def __str__(self):
+        return self.__dict__.__str__()
+
+    def __repr__(self):
+        return self.__dict__.__repr__()
+
     def __getitem__(self, key):
         """
         Provides dict-style access to attributes
         """
         return getattr(self, key)
-
-    def __str__(self):
-        return self.__dict__.__str__()
 
 
 # FUNCTIONS

@@ -14,11 +14,11 @@ class ModelArchitecture(utils.AttrDict):
     def __init__(self,
                  name: str,
                  layers: typing.Sequence,
-                 optimizer: str = 'adam',
+                 optimizer: str = 'AdamOptimizer',
                  batch_size: int = 32,
                  learning_rate: float = 1E-3,
                  **kwargs):
-        """Initialize architecture of a Convolutional Neural Network."""
+        """Initialize architecture of a Deep Neural Network."""
         # obligatory
         self.name = name
 
@@ -33,11 +33,6 @@ class ModelArchitecture(utils.AttrDict):
         # load the rest of the values as attr dict
         super().__init__(**kwargs)
 
-    def __repr__(self):
-        return "<class 'poncoocr.architecture.ModelArchitecture'"\
-               "  name: '{s.name}'"\
-               "  layers: {s.layers}>".format(s=self)
-
     @classmethod
     def from_json(cls, fp: str):
         """Loads the architecture from .json file."""
@@ -48,28 +43,46 @@ class ModelArchitecture(utils.AttrDict):
 
     @classmethod
     def from_yaml(cls, fp: str):
-        """Loads the architecture from a .yaml file.
-        Note: the architecture.yaml has to be in ``safe_load`` format
-        in order to assure correctly loaded architecture.
-        """
+        """Loads the architecture from a .yaml file."""
         with open(fp, 'r') as f:
             dct = yaml.safe_load(f)
 
         return cls(**dct)
 
+    @staticmethod
+    def _dictionarize(dct: utils.AttrDict):
+        _dct = dict()
+        for k, v in dct.items():
+            if isinstance(v, utils.AttrDict):
+                _dct[k] = dict(v)
+            else:
+                _dct[k] = v
+
+        return _dct
+
+    def to_dict(self):
+        """Dictionarize the architecture."""
+
+        arch_dct = dict(self)
+        arch_dct['layers'] = [self._dictionarize(v) for v in self.layers]
+
+        return arch_dct
+
     def to_json(self, fp: str = None):
         if fp is None:
-            return json.dumps(self.__dict__)
+            return json.dumps(self.to_dict())
 
         with open(fp, 'w') as f:
-            return json.dump(self.__dict__, f)
+            return json.dump(self.to_dict(), f)
 
     def to_yaml(self, fp: str = None):
         if fp is None:
-            return yaml.safe_dump(self.__dict__)
+            return yaml.safe_dump(self.to_dict())
 
         with open(fp, 'w') as f:
-            f.write(yaml.safe_dump(self.__dict__))
+            f.write(yaml.safe_dump(self.to_dict()))
 
     def describe(self):
-        return self.__dict__.__str__()
+        return "<class 'poncoocr.architecture.ModelArchitecture'" \
+               "  name: '{s.name}'" \
+               "  layers: {s.layers}>".format(s=self)
