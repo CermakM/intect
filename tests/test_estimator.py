@@ -42,35 +42,53 @@ class TestEstimator(unittest.TestCase):
 
             self.assertIsInstance(estimator_spec, tf.estimator.EstimatorSpec)
 
-    # def test_estimator_train(self):
-    #     """Test training the model using estimator.
-    #     The training should be done in at most 5 sec (based on the training data).
-    #     """
+    def test_estimator_train(self):
+        """Test training the model using estimator.
+        The training should be done in at most 5 sec (based on the training data).
+        """
+        arch = pcr.architecture.ModelArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
+        initializer = pcr.estimator.EstimatorInitializer(model_architecture=arch)
+
+        estimator = initializer.get_estimator()
+        # initialize deadline check -> raises if exceeded timeout
+        # thread = pcr.utils.Timeout(
+        #     timeout=5, thread_id=1, name='deadline-check', func=estimator.train
+        # )
+        # thread.start()
+        # perform 10 training steps
+        estimator.train(
+            input_fn=initializer.input_fn(path=common.TEST_DATASET_PATH,
+                                          repeat=5,
+                                          buffer_size=10
+                                          ),
+        )
+        # thread.stop()
+
+    # def test_estimator_evaluate(self):
+    #     """Test evaluating the model using estimator."""
     #     arch = pcr.architecture.ModelArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
     #     initializer = pcr.estimator.EstimatorInitializer(model_architecture=arch)
     #
     #     estimator = initializer.get_estimator()
-    #     # initialize deadline check
-    #     thread = pcr.utils.Timeout(timeout=5, thread_id=1, name='deadline-check',
-    #                                func=estimator.train)
-    #     thread.start()
-    #     estimator.train(input_fn=lambda: initializer.input_fn())
-    #     thread.stop()
-
-    # def test_estimator_evaluate(self):
-    #     """Test evaluating the model using estimator."""
-    #     ...
-    #     result = estimator.evaluate(input_fn=pcr.estimator.test_input_fn)
+    #     estimator.train(
+    #         input_fn=lambda: initializer.input_fn(dataset=_dataset, repeat=1, buffer_size=10)
+    #     )
+    #     # Should run evaluation until `input_fn` raises StopIterration
+    #     result = estimator.evaluate(
+    #         input_fn=lambda: initializer.input_fn(dataset=_dataset, repeat=1, buffer_size=10)
+    #     )
     #
     #     self.assertIsNotNone(result)
-    #
+
     # def test_estimator_predict(self):
     #     """Test prediction using estimator."""
+    #     arch = pcr.architecture.ModelArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
+    #     initializer = pcr.estimator.EstimatorInitializer(model_architecture=arch)
+    #
+    #     estimator = initializer.get_estimator()
+    #
     #     # Load sample image
     #     image = Image.open(common.TEST_IMAGE_SAMPLE)
-    #     # TODO
-    #
-    #     ...
-    #     predictions = estimator.predict(input_fn=pcr.estimator.predict_input_fn)
+    #     predictions = estimator.predict()
     #
     #     self.assertIsNotNone(predictions)

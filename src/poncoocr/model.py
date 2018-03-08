@@ -1,10 +1,13 @@
 """Module containing model of convolutional neural network for the poncoocr engine."""
 
+import os
 import tempfile
 import typing
 
 import names
 import tensorflow as tf
+
+from tensorflow.python.framework import ops
 
 from . import architecture
 
@@ -12,6 +15,7 @@ from . import architecture
 class Model(object):
 
     __model_names = set()
+    __default_model_dir = '.model_cache/'
 
     def __init__(self,
                  inputs,
@@ -29,10 +33,17 @@ class Model(object):
         self._name = name
         self.__model_names.add(self._name)
 
-        # Create a variable scope which will be reused among various models
-        with tf.variable_scope('input_data', reuse=True):
-            self._x = tf.placeholder(tf.float32, shape=inputs.shape, name='x')
-            self._labels = tf.placeholder(tf.float32, shape=labels.shape, name='labels')
+        # noinspection PyProtectedMember
+        # Creates variable scope that is shared across all models and ensures that the tensors belong
+        # to the same graph that the inputs came from
+        self._graph = ops._get_graph_from_inputs([inputs, labels])  # pylint: disable=protected-access
+        self._graph_context_manager = self._graph.as_default()
+        self._graph_context_manager.__enter__()
+
+        with tf.name_scope(self._name):
+            with tf.variable_scope('input_layer', reuse=True):
+                self._x = inputs['x']
+                self._labels = labels
 
         self._layers = [self._x]
 
@@ -45,12 +56,27 @@ class Model(object):
         self.optimizer = getattr(tf.train, getattr(params, 'optimizer', 'AdamOptimizer'), tf.train.AdamOptimizer)
 
         # Directory to save the model to
-        self.model_dir = getattr(params, 'model_dir', tempfile.mkdtemp(prefix=self._name))
+
+        if getattr(params, 'model_dir', None) is None:
+            if not os.path.isdir(self.__default_model_dir):
+                os.mkdir(self.__default_model_dir)
+
+            self.model_dir = tempfile.mkdtemp(suffix='_%s' % self._name,
+                                              dir=os.path.abspath('.model_cache/'))
+        else:
+            self.model_dir = getattr(params, 'model_dir')
 
     def __repr__(self):
         return "<class 'poncoocr.model.Model'" \
                "  name: {s._name}" \
                "  layers: {s._layers}>".format(s=self)
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self._graph_context_manager.__exit__(exc_type, exc_val, exc_tb)
+
+    @property
+    def graph(self):
+        return self._graph or tf.get_default_graph()
 
     @property
     def x(self):
@@ -61,20 +87,20 @@ class Model(object):
         return self._labels
 
     @property
-    def logits(self):
-        return self._layers[-1]
-
-    @property
-    def name(self):
-        return self._name
-
-    @property
     def input_layer(self):
         return self._layers[0]
 
     @property
     def hidden_layers(self):
         return tuple(self._layers[1:])
+
+    @property
+    def logits(self):
+        return self._layers[-1]
+
+    @property
+    def name(self):
+        return self._name
 
     @classmethod
     def from_architecture(cls, inputs, labels, arch: architecture.ModelArchitecture, params: dict = None):
@@ -107,7 +133,9 @@ class Model(object):
             # Construct a layer by the type specified in the architecture
             config = layer.params or {}
 
-            model.add_layer(layer_type=layer.type, name=layer.name, **config)
+            with tf.name_scope(model._name):
+                with tf.variable_scope('hidden_layer_%d' % len(model.hidden_layers)):
+                    model.add_layer(layer_type=layer.type, name=layer.name, **config)
 
         return model
 
@@ -146,21 +174,20 @@ class Model(object):
         # Uniquify layer name
         layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'conv'), id=len(self._layers))
 
-        with tf.variable_scope(self._name):
-            # initialize weights
-            conv = tf.layers.conv2d(
-                inputs=self._layers[-1],
-                filters=filters,
-                activation=activation,
-                kernel_size=kernel_size,
-                padding=padding,
-                strides=strides,
-                name=layer_name,
-                *args, **kwargs
-            )
+        # initialize weights
+        conv = tf.layers.conv2d(
+            inputs=self._layers[-1],
+            filters=filters,
+            activation=activation,
+            kernel_size=kernel_size,
+            padding=padding,
+            strides=strides,
+            name=layer_name,
+            *args, **kwargs
+        )
 
-            # Add summaries
-            # TODO
+        # Add summaries
+        # TODO
 
         self._layers.append(conv)
 
@@ -180,17 +207,16 @@ class Model(object):
         # Uniquify layer name
         layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'dense'), id=len(self._layers))
 
-        with tf.variable_scope(self._name):
-            dense = tf.layers.dense(
-                inputs=self._layers[-1],
-                units=units,
-                activation=activation,
-                name=layer_name,
-                *args, **kwargs
-            )
+        dense = tf.layers.dense(
+            inputs=self._layers[-1],
+            units=units,
+            activation=activation,
+            name=layer_name,
+            *args, **kwargs
+        )
 
-            # add summaries
-            # TODO
+        # add summaries
+        # TODO
 
         self._layers.append(dense)
 
@@ -203,16 +229,18 @@ class Model(object):
         # Uniquify layer name
         layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'pool'), id=len(self._layers))
 
-        with tf.variable_scope(self._name):
-            pool = tf.layers.max_pooling2d(
-                inputs=self._layers[-1],
-                pool_size=pool_size,
-                strides=strides,
-                name=layer_name,
-                *args, **kwargs
-            )
+        pool = tf.layers.max_pooling2d(
+            inputs=self._layers[-1],
+            pool_size=pool_size,
+            strides=strides,
+            name=layer_name,
+            *args, **kwargs
+        )
 
-            self._layers.append(pool)
+        # add summaries
+        # TODO
+
+        self._layers.append(pool)
 
     def save(self):
         raise NotImplementedError

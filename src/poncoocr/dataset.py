@@ -2,6 +2,7 @@
 
 import typing
 
+import numpy as np
 import tensorflow as tf
 
 
@@ -49,8 +50,8 @@ class DirectoryIterator:
         return self._samples
 
     def __str__(self):
-        description = "Number of images: {s._samples}\nNumber of labels: {s._samples}\n" \
-                      "Image shape: {s._img_shape}"
+        description = "<%s>  images: {s._samples}  shapes: {s._img_shape}" % type(self)
+
         return description.format(s=self)
 
     def __iter__(self):
@@ -61,11 +62,13 @@ class DirectoryIterator:
 
     @property
     def features(self) -> typing.Sequence:
-        return self._features
+        """Property holding features of the loaded data set as a np.array."""
+        return np.concatenate(self._features)
 
     @property
     def labels(self) -> typing.Sequence:
-        return self._labels
+        """Property holding labels of the loaded data set as a np.array."""
+        return np.concatenate(self._labels)
 
     @property
     def classes(self):

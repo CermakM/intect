@@ -62,7 +62,6 @@ class ModelArchitecture(utils.AttrDict):
 
     def to_dict(self):
         """Dictionarize the architecture."""
-
         arch_dct = dict(self)
         arch_dct['layers'] = [self._dictionarize(v) for v in self.layers]
 

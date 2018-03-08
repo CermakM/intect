@@ -3,6 +3,7 @@
 import tensorflow as tf
 
 from .architecture import ModelArchitecture
+from .dataset import Dataset
 from .model import Model
 
 
@@ -14,27 +15,27 @@ class EstimatorInitializer(object):
         self._arch = model_architecture
         self._params = params
 
-    def input_fn(self, dataset: tf.data.Dataset, repeat=None, buffer_size=None):
+    def input_fn(self, path: str, repeat=None, buffer_size=None):
         """Input function for the estimator.
-        Loads the train dataset and returns tensors of features and labels."""
+        Loads the train dataset from a directory given by `path` and returns input function
+        that has signature () -> ({'x': features}, {'labels': labels)."""
+        dataset = Dataset.from_directory(path)
         buffer_size = buffer_size or len(dataset.output_shapes[0])
 
         dataset = dataset.repeat(repeat).shuffle(buffer_size=buffer_size).batch(self._arch.batch_size)
 
         iterator = dataset.make_one_shot_iterator()
-        features, labels = iterator.get_next()
+        with tf.variable_scope('input_layer', reuse=True):
+            features, labels = iterator.get_next()
 
-        return tf.stack(features), tf.stack(labels)
-
-    def predict_input_fn(self):
-        """Input function for the estimator.
-        Loads the predict dataset and returns tensors of features and labels."""
-        pass
+        return lambda: ({'x': features}, labels)
 
     def model_fn(self, features, labels, mode, params=None) -> tf.estimator.EstimatorSpec:
         """Function used to be passed to an estimator and called upon train, eval or prediction.
         :returns: EstimatorSpec, a custom estimator specifications
         """
+
+        # Pass the features and labels to the model and assign them to the new graph
         model = Model.from_architecture(
             inputs=features,
             labels=labels,
@@ -73,7 +74,7 @@ class EstimatorInitializer(object):
 
             # define evaluation metrics - the classification accuracy
             metrics = {
-                'accuracy': tf.metrics.accuracy(labels=labels, predictions=y_pred)
+                'accuracy': tf.metrics.accuracy(labels=model.labels, predictions=y_pred)
             }
 
             spec = tf.estimator.EstimatorSpec(
@@ -90,6 +91,8 @@ class EstimatorInitializer(object):
         :param model_dir: directory to save the model, graph and checkpoints to
         :param params: parameters to be passed to `model_fn`
         """
+
+        params = params or dict()
 
         return tf.estimator.Estimator(
             model_fn=self.model_fn,
