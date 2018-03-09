@@ -9,10 +9,11 @@ from PIL import Image
 from . import common
 from src import poncoocr as pcr
 
-_dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
+_dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH).batch(32)
 _features, _labels = _dataset.make_one_shot_iterator().get_next()
 
-_features, _labels = tf.stack(_features), tf.stack(_labels)
+# Wrap features into a dict
+_features = {'x': _features}
 
 
 class TestEstimator(unittest.TestCase):
@@ -47,22 +48,23 @@ class TestEstimator(unittest.TestCase):
         The training should be done in at most 5 sec (based on the training data).
         """
         arch = pcr.architecture.ModelArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
-        initializer = pcr.estimator.EstimatorInitializer(model_architecture=arch)
+        estim_initializer = pcr.estimator.EstimatorInitializer(model_architecture=arch)
 
-        estimator = initializer.get_estimator()
+        estimator = estim_initializer.get_estimator()
         # initialize deadline check -> raises if exceeded timeout
-        # thread = pcr.utils.Timeout(
-        #     timeout=5, thread_id=1, name='deadline-check', func=estimator.train
-        # )
-        # thread.start()
+        thread = pcr.utils.Timeout(
+            timeout=15, thread_id=1, name='deadline-check', func=estimator.train
+        )
+        thread.start()
         # perform 10 training steps
         estimator.train(
-            input_fn=initializer.input_fn(path=common.TEST_DATASET_PATH,
-                                          repeat=5,
-                                          buffer_size=10
-                                          ),
+            input_fn=lambda: estim_initializer.input_fn(path=common.TEST_DATASET_PATH,
+                                                        repeat=None,
+                                                        buffer_size=10
+                                                        ),
+            steps=10
         )
-        # thread.stop()
+        thread.stop()
 
     # def test_estimator_evaluate(self):
     #     """Test evaluating the model using estimator."""

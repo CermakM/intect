@@ -25,10 +25,11 @@ class EstimatorInitializer(object):
         dataset = dataset.repeat(repeat).shuffle(buffer_size=buffer_size).batch(self._arch.batch_size)
 
         iterator = dataset.make_one_shot_iterator()
+        # Use the graph invoked by estimator._train_model
         with tf.variable_scope('input_layer', reuse=True):
             features, labels = iterator.get_next()
 
-        return lambda: ({'x': features}, labels)
+        return {'x': features}, labels
 
     def model_fn(self, features, labels, mode, params=None) -> tf.estimator.EstimatorSpec:
         """Function used to be passed to an estimator and called upon train, eval or prediction.

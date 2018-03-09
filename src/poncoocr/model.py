@@ -40,8 +40,8 @@ class Model(object):
         self._graph_context_manager = self._graph.as_default()
         self._graph_context_manager.__enter__()
 
-        with tf.name_scope(self._name):
-            with tf.variable_scope('input_layer', reuse=True):
+        with tf.variable_scope(self._name, reuse=True):
+            with tf.name_scope('input_layer'):
                 self._x = inputs['x']
                 self._labels = labels
 
@@ -133,8 +133,8 @@ class Model(object):
             # Construct a layer by the type specified in the architecture
             config = layer.params or {}
 
-            with tf.name_scope(model._name):
-                with tf.variable_scope('hidden_layer_%d' % len(model.hidden_layers)):
+            with tf.variable_scope(model._name):
+                with tf.name_scope('hidden_layer_%d' % len(model.hidden_layers)):
                     model.add_layer(layer_type=layer.type, name=layer.name, **config)
 
         return model
