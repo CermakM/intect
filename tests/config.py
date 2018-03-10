@@ -1,4 +1,4 @@
-"""Module containing common variables for tests."""
+"""Module containing common variables and configurations for tests."""
 
 import os
 

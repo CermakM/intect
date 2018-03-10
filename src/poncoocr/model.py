@@ -1,7 +1,5 @@
 """Module containing model of convolutional neural network for the poncoocr engine."""
 
-import os
-import tempfile
 import typing
 
 import names
@@ -15,7 +13,6 @@ from . import architecture
 class Model(object):
 
     __model_names = set()
-    __default_model_dir = '.model_cache/'
 
     def __init__(self,
                  inputs,
@@ -23,6 +20,9 @@ class Model(object):
                  name: str = None,
                  params: dict = None):
         """Initialize the model."""
+
+        if name in self.__model_names:
+            raise ValueError("Model name `%s` already exists." % name)
 
         if name is None:
             # Generate some random name
@@ -34,14 +34,12 @@ class Model(object):
         self.__model_names.add(self._name)
 
         # noinspection PyProtectedMember
-        # Creates variable scope that is shared across all models and ensures that the tensors belong
-        # to the same graph that the inputs came from
         self._graph = ops._get_graph_from_inputs([inputs, labels])  # pylint: disable=protected-access
         self._graph_context_manager = self._graph.as_default()
         self._graph_context_manager.__enter__()
 
-        with tf.variable_scope(self._name, reuse=True):
-            with tf.name_scope('input_layer'):
+        with tf.name_scope(self.name):
+            with tf.variable_scope('input_layer'):
                 self._x = inputs['x']
                 self._labels = labels
 
@@ -54,17 +52,6 @@ class Model(object):
         self.batch_size = tf.constant(getattr(params, 'batch_size', 32), tf.uint8)
         self.learning_rate = tf.constant(getattr(params, 'learning_rate', 1E-4), tf.float32)
         self.optimizer = getattr(tf.train, getattr(params, 'optimizer', 'AdamOptimizer'), tf.train.AdamOptimizer)
-
-        # Directory to save the model to
-
-        if getattr(params, 'model_dir', None) is None:
-            if not os.path.isdir(self.__default_model_dir):
-                os.mkdir(self.__default_model_dir)
-
-            self.model_dir = tempfile.mkdtemp(suffix='_%s' % self._name,
-                                              dir=os.path.abspath('.model_cache/'))
-        else:
-            self.model_dir = getattr(params, 'model_dir')
 
     def __repr__(self):
         return "<class 'poncoocr.model.Model'" \
@@ -133,9 +120,7 @@ class Model(object):
             # Construct a layer by the type specified in the architecture
             config = layer.params or {}
 
-            with tf.variable_scope(model._name):
-                with tf.name_scope('hidden_layer_%d' % len(model.hidden_layers)):
-                    model.add_layer(layer_type=layer.type, name=layer.name, **config)
+            model.add_layer(layer_type=layer.type, name=layer.name, **config)
 
         return model
 
@@ -143,20 +128,23 @@ class Model(object):
         """Add layer specified by `layer_type` argument to the model."""
         assert isinstance(layer_type, str), "expected argument `layer_type` of type `%s`" % type(str)
 
-        if layer_type == 'conv2d':
-            self.add_conv_layer(*args, **kwargs)
+        with tf.name_scope(self.name):
+            with tf.variable_scope('hidden_layer_%d' % len(self.hidden_layers)):
 
-        elif layer_type == 'max_pooling2d':
-            self.add_max_pooling_layer(*args, **kwargs)
+                if layer_type == 'conv2d':
+                    self.add_conv_layer(*args, **kwargs)
 
-        elif layer_type == 'flatten':
-            self.add_flatten_layer()
+                elif layer_type == 'max_pooling2d':
+                    self.add_max_pooling_layer(*args, **kwargs)
 
-        elif layer_type == 'dense':
-            self.add_dense_layer(*args, **kwargs)
+                elif layer_type == 'flatten':
+                    self.add_flatten_layer()
 
-        else:
-            raise AttributeError("Invalid argument `layer_type` provided: `%s`" % layer_type)
+                elif layer_type == 'dense':
+                    self.add_dense_layer(*args, **kwargs)
+
+                else:
+                    raise AttributeError("Invalid argument `layer_type` provided: `%s`" % layer_type)
 
     def add_conv_layer(self,
                        filters: int,

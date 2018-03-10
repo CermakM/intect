@@ -1,4 +1,4 @@
-name: null
+name: default
 
 optimizer: AdamOptimizer
 batch_size: 32

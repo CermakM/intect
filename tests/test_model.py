@@ -6,11 +6,11 @@ import tensorflow as tf
 from PIL import Image
 
 # The imports will need to be fixed to test installed version instead of the dev one
-from . import common
+from . import config
 from src import poncoocr as pcr
 
 
-_dataset = pcr.dataset.Dataset.from_directory(common.TEST_DATASET_PATH)
+_dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
 _features, _labels = _dataset.make_one_shot_iterator().get_next()
 
 _features, _labels = tf.stack(_features), tf.stack(_labels)
@@ -38,7 +38,7 @@ class TestModel(unittest.TestCase):
 
     def test_model_from_architecture(self):
         """Test that the model loads the architecture properly."""
-        arch = pcr.architecture.ModelArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)
+        arch = pcr.architecture.ModelArchitecture.from_yaml(config.TEST_ARCHITECTURE_YAML)
 
         model = pcr.model.Model.from_architecture(
             inputs=_features, labels=_labels, arch=arch

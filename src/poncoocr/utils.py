@@ -14,7 +14,7 @@ from matplotlib.pyplot import plot as plt
 class Timeout(threading.Thread):
     """Initialize time out timer which raises an exception when the deadline is exceeded."""
 
-    def __init__(self, timeout: int, thread_id: int = None, name: str = None, func=None):
+    def __init__(self, timeout: int, thread_id: int = None, name: str = None, func_name=None):
         """Initialize timer.
         :param timeout: int, time in seconds
         """
@@ -25,8 +25,8 @@ class Timeout(threading.Thread):
         self._timeout = timeout
         self._time = 0
         self._run = False
-        if func is not None:
-            self._message = "function `%s` exceeded deadline." % func.__code__.co_name
+        if func_name is not None:
+            self._message = "function `%s` exceeded deadline." % func_name
         else:
             self._message = "deadline exceeded: `%d` seconds" % timeout
 

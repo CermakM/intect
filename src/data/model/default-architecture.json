@@ -1,0 +1,61 @@
+{
+  "layers": [
+    {
+      "type": "conv2d",
+      "params": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1
+        ],
+        "activation": "relu",
+        "filters": 16,
+        "kernel_size": [
+          3,
+          3
+        ]
+      },
+      "name": "conv"
+    },
+    {
+      "type": "max_pooling2d",
+      "params": {
+        "strides": 1,
+        "pool_size": [
+          2,
+          2
+        ]
+      },
+      "name": "pool"
+    },
+    {
+      "type": "conv2d",
+      "params": {
+        "padding": "SAME",
+        "strides": [
+          1,
+          1
+        ],
+        "activation": "relu",
+        "filters": 16,
+        "kernel_size": [
+          3,
+          3
+        ]
+      },
+      "name": "conv"
+    },
+    {
+      "type": "dense",
+      "params": {
+        "units": 1024,
+        "activation": "relu"
+      },
+      "name": "fcl"
+    }
+  ],
+  "learning_rate": 0.001,
+  "optimizer": "AdamOptimizer",
+  "name": "default",
+  "batch_size": 32
+}

@@ -20,7 +20,7 @@ class ModelArchitecture(utils.AttrDict):
                  **kwargs):
         """Initialize architecture of a Deep Neural Network."""
         # obligatory
-        self.name = name
+        self.name = name or 'default'
 
         # optional
         self.batch_size = batch_size
@@ -59,6 +59,9 @@ class ModelArchitecture(utils.AttrDict):
                 _dct[k] = v
 
         return _dct
+
+    def update(self, other):
+        self.__dict__.update(other)
 
     def to_dict(self):
         """Dictionarize the architecture."""

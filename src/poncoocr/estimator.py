@@ -1,6 +1,12 @@
 """Module containing estimator for poncoocr engine."""
 
+import os
+import tempfile
+
+import numpy as np
 import tensorflow as tf
+
+from PIL import Image
 
 from .architecture import ModelArchitecture
 from .dataset import Dataset
@@ -9,11 +15,20 @@ from .model import Model
 
 class EstimatorInitializer(object):
 
+    __model_cache_dir = '.model_cache/'
+
     def __init__(self, model_architecture: ModelArchitecture, params: dict = None):
         """Initialize estimator initializer with a model to be used for the estimator."""
 
         self._arch = model_architecture
-        self._params = params
+        self._params = params or dict()
+
+        if not os.path.isdir(self.__model_cache_dir):
+            os.mkdir(self.__model_cache_dir)
+
+        self._arch_cache_dir = tempfile.mkdtemp(dir=os.path.join(self.__model_cache_dir),
+                                                prefix='arch_',
+                                                suffix='_%s' % self._arch.name)
 
     def input_fn(self, path: str, repeat=None, buffer_size=None):
         """Input function for the estimator.
@@ -31,18 +46,55 @@ class EstimatorInitializer(object):
 
         return {'x': features}, labels
 
-    def model_fn(self, features, labels, mode, params=None) -> tf.estimator.EstimatorSpec:
+    def predict_input_fn(self, path: str, mode='RGB'):
+
+        if os.path.isdir(path):
+            dataset = Dataset.from_directory(path)
+
+            dataset = dataset.repeat(1).batch(self._arch.batch_size)
+
+            iterator = dataset.make_one_shot_iterator()
+            # Use the graph invoked by estimator._train_model
+            with tf.variable_scope('predict_input'):
+                features, _ = iterator.get_next()
+
+        else:
+            img_arr = np.asarray(Image.open(path, 'r').convert(mode))
+            img_tensor = tf.convert_to_tensor(img_arr, dtype=tf.float32)
+            img_tensor = tf.expand_dims(img_tensor, 0)
+
+            dataset = tf.data.Dataset.from_tensor_slices(img_tensor)
+
+            iterator = dataset.batch(self._arch.batch_size).make_one_shot_iterator()
+            features = iterator.get_next()
+
+        print(features)
+
+        return {'x': features}
+
+    def get_estimator(self):
+        """Returns the estimator with the model function.
+        """
+
+        return tf.estimator.Estimator(
+            model_fn=self._model_fn,
+            model_dir=self._arch_cache_dir,
+            params=self._params
+        )
+
+    def _model_fn(self, features, labels, mode, params=None) -> tf.estimator.EstimatorSpec:
         """Function used to be passed to an estimator and called upon train, eval or prediction.
         :returns: EstimatorSpec, a custom estimator specifications
         """
 
-        # Pass the features and labels to the model and assign them to the new graph
         model = Model.from_architecture(
             inputs=features,
             labels=labels,
             arch=self._arch,
             params=params,
         )
+
+        print('Created new model {} in {}'.format(model.name, self._arch_cache_dir))
 
         logits = model.logits
 
@@ -86,17 +138,3 @@ class EstimatorInitializer(object):
             )
 
         return spec
-
-    def get_estimator(self, model_dir=None, params=None):
-        """Returns the estimator with the model function.
-        :param model_dir: directory to save the model, graph and checkpoints to
-        :param params: parameters to be passed to `model_fn`
-        """
-
-        params = params or dict()
-
-        return tf.estimator.Estimator(
-            model_fn=self.model_fn,
-            model_dir=model_dir,
-            params=params
-        )
