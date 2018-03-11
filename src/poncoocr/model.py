@@ -22,7 +22,9 @@ class Model(object):
         """Initialize the model."""
 
         if name in self.__model_names:
-            raise ValueError("Model name `%s` already exists." % name)
+            # TODO: allow? reuse?
+            # raise ValueError("Model name `%s` already exists." % name)
+            pass
 
         if name is None:
             # Generate some random name
@@ -38,10 +40,9 @@ class Model(object):
         self._graph_context_manager = self._graph.as_default()
         self._graph_context_manager.__enter__()
 
-        with tf.name_scope(self.name):
-            with tf.variable_scope('input_layer'):
-                self._x = inputs['x']
-                self._labels = labels
+        with tf.variable_scope('input_layer'):
+            self._x = inputs['x']
+            self._labels = labels
 
         self._layers = [self._x]
 
@@ -128,23 +129,22 @@ class Model(object):
         """Add layer specified by `layer_type` argument to the model."""
         assert isinstance(layer_type, str), "expected argument `layer_type` of type `%s`" % type(str)
 
-        with tf.name_scope(self.name):
-            with tf.variable_scope('hidden_layer_%d' % len(self.hidden_layers)):
+        with tf.variable_scope('hidden_layer_%d' % len(self.hidden_layers)):
 
-                if layer_type == 'conv2d':
-                    self.add_conv_layer(*args, **kwargs)
+            if layer_type == 'conv2d':
+                self.add_conv_layer(*args, **kwargs)
 
-                elif layer_type == 'max_pooling2d':
-                    self.add_max_pooling_layer(*args, **kwargs)
+            elif layer_type == 'max_pooling2d':
+                self.add_max_pooling_layer(*args, **kwargs)
 
-                elif layer_type == 'flatten':
-                    self.add_flatten_layer()
+            elif layer_type == 'flatten':
+                self.add_flatten_layer()
 
-                elif layer_type == 'dense':
-                    self.add_dense_layer(*args, **kwargs)
+            elif layer_type == 'dense':
+                self.add_dense_layer(*args, **kwargs)
 
-                else:
-                    raise AttributeError("Invalid argument `layer_type` provided: `%s`" % layer_type)
+            else:
+                raise AttributeError("Invalid argument `layer_type` provided: `%s`" % layer_type)
 
     def add_conv_layer(self,
                        filters: int,
@@ -174,8 +174,8 @@ class Model(object):
             *args, **kwargs
         )
 
-        # Add summaries
-        # TODO
+        # add tensorboard summaries
+        tf.summary.histogram(name=layer_name, values=conv)
 
         self._layers.append(conv)
 
@@ -203,8 +203,8 @@ class Model(object):
             *args, **kwargs
         )
 
-        # add summaries
-        # TODO
+        # add tensorboard summaries
+        tf.summary.histogram(name=layer_name, values=dense)
 
         self._layers.append(dense)
 
@@ -225,8 +225,8 @@ class Model(object):
             *args, **kwargs
         )
 
-        # add summaries
-        # TODO
+        # add tensorboard summaries
+        tf.summary.histogram(name=layer_name, values=pool)
 
         self._layers.append(pool)
 

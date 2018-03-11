@@ -46,16 +46,28 @@
       "name": "conv"
     },
     {
+      "type": "flatten",
+      "params": null,
+      "name": "flat"
+    },
+    {
       "type": "dense",
       "params": {
         "units": 1024,
         "activation": "relu"
       },
       "name": "fcl"
+    },
+    {
+      "type": "dense",
+      "params": {
+        "units": 5
+      },
+      "name": "logits"
     }
   ],
   "learning_rate": 0.001,
   "optimizer": "AdamOptimizer",
-  "name": "default",
+  "name": null,
   "batch_size": 32
 }

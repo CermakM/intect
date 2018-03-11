@@ -36,4 +36,4 @@ layers:
     name: logits
     type: dense
     params:
-      units: 5
+      units: 62
