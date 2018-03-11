@@ -32,48 +32,31 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
         estim_initializer = pcr.estimator.EstimatorInitializer(model_architecture=arch)
         estimator = estim_initializer.get_estimator()
 
-        # ---- FOR MNIST ONLY: DEBUG PURPOSES ----
-
-        from tensorflow.examples.tutorials.mnist import input_data
-        data = input_data.read_data_sets(train_dir=FLAGS.train_dir)
-
-        # training
-        train_data = data.test
-
+        print('Training the model: `%s`' % arch.name)
         estimator.train(
-            input_fn=lambda: estim_initializer.input_fn(
-                features=train_data.images.reshape(-1, 28, 28, 1),
-                labels=train_data.labels,
-                one_hot=True,
-                depth=10
+            input_fn=lambda: estim_initializer.dir_input_fn(
+                path=FLAGS.test_dir,
+                buffer_size=FLAGS.buffer_size,
             ),
             steps=FLAGS.train_steps
         )
 
-        # validation
-        validation_data = data.validation
-
+        print('Evaluating the model: `%s`' % arch.name)
         evaluations = estimator.evaluate(
-            input_fn=lambda: estim_initializer.input_fn(
-                features=validation_data.images.reshape(-1, 28, 28, 1),
-                labels=validation_data.labels,
-                one_hot=True,
-                depth=10,
+            input_fn=lambda: estim_initializer.dir_input_fn(
+                path=FLAGS.test_dir,
+                repeat=10,
+                buffer_size=FLAGS.buffer_size,
             ),
-            steps=100
         )
 
-        print('Model evaluation: ', evaluations)
+        print('Model `%s` evaluation: ' % arch.name, evaluations)
 
 
 if __name__ == '__main__':
-    from tests import config
-
     tf.app.run(main=main,
                argv=[
                    sys.argv[0],
-                   '--train_dir', 'src/data/mnist_data/',
-                   '--model_arch', 'src/data/model/mnist-architecture.yaml',
                    '--model_dir', 'charset-arch',
-                   '--buffer_size', '5000',
+                   '--buffer_size', '20000',
                ])  # FIXME: Debug

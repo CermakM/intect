@@ -129,7 +129,7 @@ class Model(object):
         """Add layer specified by `layer_type` argument to the model."""
         assert isinstance(layer_type, str), "expected argument `layer_type` of type `%s`" % type(str)
 
-        with tf.variable_scope('hidden_layer_%d' % len(self.hidden_layers)):
+        with tf.variable_scope('hidden_layer'):
 
             if layer_type == 'conv2d':
                 self.add_conv_layer(*args, **kwargs)
