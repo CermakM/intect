@@ -32,7 +32,7 @@ layers:
     type: dense
     params:
       activation: relu
-      units: 1024
+      units: 128
   -
     name: logits
     type: dense

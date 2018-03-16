@@ -11,12 +11,6 @@ _data_dir = os.path.dirname(data.__file__)
 # Define TensorFlow app arguments
 
 tf.app.flags.DEFINE_bool(
-    name='use_arch_dir',
-    default=False,
-    help="Whether to use the architecture directory to load all the architectures present."
-)
-
-tf.app.flags.DEFINE_bool(
     name='json',
     default=False,
     help="Whether to use the JSON parser to parse the model architecture file."
@@ -33,9 +27,9 @@ tf.app.flags.DEFINE_string(
 )
 
 tf.app.flags.DEFINE_list(
-    name='arch_dir',
-    default=os.path.join(_data_dir, 'model/default-architecture.yaml'),
-    help="List of {.yaml, .json} files containing the model architecture."
+    name='arch_from_dir',
+    default=None,
+    help="Path to directory of {.yaml, .json} files containing model specifications."
 )
 
 tf.app.flags.DEFINE_integer(
@@ -63,12 +57,6 @@ tf.app.flags.DEFINE_string(
     name='train_dir',
     default=os.path.join(_data_dir, 'train_data'),
     help="Path to the directory storing train data."
-)
-
-tf.app.flags.DEFINE_string(
-    name='sprite_dir',
-    default=os.path.join(_data_dir, 'sprites'),
-    help="Path to the directory storing sprites."
 )
 
 tf.app.flags.DEFINE_string(

@@ -129,7 +129,7 @@ class Model(object):
         """Add layer specified by `layer_type` argument to the model."""
         assert isinstance(layer_type, str), "expected argument `layer_type` of type `%s`" % type(str)
 
-        with tf.variable_scope('hidden_layer'):
+        with tf.variable_scope('hidden_layer_%d' % len(self.hidden_layers)):
 
             if layer_type == 'conv2d':
                 self.add_conv_layer(*args, **kwargs)
@@ -175,6 +175,7 @@ class Model(object):
         )
 
         # add tensorboard summaries
+        tf.summary.scalar(name='weights', tensor=tf.reduce_mean(conv))
         tf.summary.histogram(name=layer_name, values=conv)
 
         self._layers.append(conv)
@@ -204,6 +205,7 @@ class Model(object):
         )
 
         # add tensorboard summaries
+        tf.summary.scalar(name='weights', tensor=tf.reduce_mean(dense))
         tf.summary.histogram(name=layer_name, values=dense)
 
         self._layers.append(dense)
@@ -226,6 +228,7 @@ class Model(object):
         )
 
         # add tensorboard summaries
+        tf.summary.scalar(name='weights', tensor=tf.reduce_mean(pool))
         tf.summary.histogram(name=layer_name, values=pool)
 
         self._layers.append(pool)

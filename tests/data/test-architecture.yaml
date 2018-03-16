@@ -1,11 +1,11 @@
 name: null
 
 optimizer: AdamOptimizer
-batch_size: 32
-learning_rate: 0.001
+batch_size: 10
+learning_rate: 0.05
 
 layers:
-  - &conv
+  - &conv16
     name: conv
     type: conv2d
     params:
@@ -20,18 +20,27 @@ layers:
     params:
       pool_size: [2, 2]
       strides: 1
-  - *conv
+#  - &conv32
+#    name: conv
+#    type: conv2d
+#    params:
+#      activation: relu
+#      filters: 32
+#      padding: SAME
+#      strides: [1, 1]
+#      kernel_size: [3, 3]
+#  - *pool
   - &flat
     name: flat
     type: flatten
     params:
       null
-  - &fcl
+  - &fcl128
     name: fcl
     type: dense
     params:
-      activation: relu
-      units: 1024
+      activation: sigmoid
+      units: 128
   -
     name: logits
     type: dense
