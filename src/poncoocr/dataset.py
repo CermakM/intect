@@ -9,11 +9,28 @@ import tensorflow as tf
 class Dataset(object):
     """Custom data set loader using DirectoryIterator class."""
 
-    def __init__(self):
-        pass
+    def __init__(self,
+                 features,
+                 labels,
+                 classes: dict = None,
+                 shape: typing.Sequence = None):
+        """Initialize Dataset."""
+        self._features = features,
+        self._labels = labels
+        self._classes = classes
+        self._shape = shape
 
-    @staticmethod
-    def from_directory(directory: str,
+    @property
+    def features(self):
+        return self._features
+
+    @property
+    def labels(self):
+        return self._labels
+
+    @classmethod
+    def from_directory(cls,
+                       directory: str,
                        batch_size=1,
                        target_size=(32, 32)) -> tf.data.Dataset:
         """Loads a dataset from the given directory using DirectoryIterator.
@@ -23,7 +40,17 @@ class Dataset(object):
         dir_iter = DirectoryIterator(directory, batch_size, target_size)
         features, labels = dir_iter.features, dir_iter.labels
 
-        return tf.data.Dataset.from_tensor_slices((features, labels))
+        return cls(features, labels)
+
+    def get_dataset_iterator(self, batch_size=None, shuffle=False, buffer_size=None):
+
+        dataset = tf.data.Dataset.from_tensor_slices((self._features, self._labels))
+        if shuffle:
+            dataset = dataset.shuffle(buffer_size=buffer_size or len(self._labels))
+        if batch_size:
+            dataset = dataset.batch(batch_size=batch_size)
+
+        return dataset.make_one_shot_iterator()
 
 
 class DirectoryIterator:
