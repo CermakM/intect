@@ -17,20 +17,13 @@ tf.app.flags.DEFINE_bool(
          "By default architecture is expected to be in yaml format."
 )
 
-# Define TensorFlow numeric flags
-
 tf.app.flags.DEFINE_string(
-    name='model_dir',
-    default=None,
-    help="Directory to save the cache to. By default "
-         "a temporary directory is created using the architecture name."
-)
-
-tf.app.flags.DEFINE_list(
-    name='arch_from_dir',
+    name='use_arch_dir',
     default=None,
     help="Path to directory of {.yaml, .json} files containing model specifications."
 )
+
+# Define TensorFlow numeric flags
 
 tf.app.flags.DEFINE_integer(
     name='buffer_size',
@@ -40,8 +33,14 @@ tf.app.flags.DEFINE_integer(
 )
 
 tf.app.flags.DEFINE_integer(
-    name='train_steps',
-    default=2000,
+    name='train_epochs',
+    default=10,
+    help="Number of training steps. This means the number of batches that is the model being trained on."
+)
+
+tf.app.flags.DEFINE_integer(
+    name='test_steps',
+    default=500,
     help="Number of training steps. This means the number of batches that is the model being trained on."
 )
 
@@ -49,13 +48,13 @@ tf.app.flags.DEFINE_integer(
 
 tf.app.flags.DEFINE_string(
     name='test_dir',
-    default=os.path.join(_data_dir, 'test_data'),
+    default=os.path.join(_data_dir, 'char-dataset/test_data'),
     help="Path to the directory storing test data."
 )
 
 tf.app.flags.DEFINE_string(
     name='train_dir',
-    default=os.path.join(_data_dir, 'train_data'),
+    default=os.path.join(_data_dir, 'char-dataset/train_data'),
     help="Path to the directory storing train data."
 )
 

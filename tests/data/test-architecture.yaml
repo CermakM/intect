@@ -2,7 +2,7 @@ name: null
 
 optimizer: AdamOptimizer
 batch_size: 32
-learning_rate: 0.001
+learning_rate: 0.05
 
 layers:
   - &conv
@@ -21,6 +21,7 @@ layers:
       pool_size: [2, 2]
       strides: 1
   - *conv
+  - *pool
   - &flat
     name: flat
     type: flatten
@@ -31,9 +32,9 @@ layers:
     type: dense
     params:
       activation: relu
-      units: 1024
+      units: 128
   -
     name: logits
     type: dense
     params:
-      units: 5
+      units: 2

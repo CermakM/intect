@@ -5,8 +5,28 @@ import threading
 
 import tensorflow as tf
 
+from collections import Counter
 from collections.abc import Mapping
 from matplotlib.pyplot import plot as plt
+
+from src import poncoocr as pcr
+
+
+# FUNCTIONS
+
+def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
+    types = [layer.type for layer in arch.layers]
+    bag = Counter(types)
+
+    hparam_string = "{name},lr={lr},bs={bs},conv={conv},fcl={fcl}".format(
+        name=arch.name,
+        lr=arch.learning_rate,
+        bs=arch.batch_size,
+        conv=bag.get('conv2d', 0),
+        fcl=bag.get('dense', 1) - 1
+    )
+
+    return hparam_string
 
 
 # CLASSES
@@ -80,7 +100,7 @@ class AttrDict(Mapping):
 
 # FUNCTIONS
 
-def plot_images(images, labels,
+def plot_images(images: list, labels: list,
                 prediction=None,
                 cols=4,
                 target_shape=None):

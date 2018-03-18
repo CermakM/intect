@@ -3,6 +3,7 @@
 import json
 import yaml
 
+import names
 import typing
 
 from . import utils
@@ -20,7 +21,7 @@ class ModelArchitecture(utils.AttrDict):
                  **kwargs):
         """Initialize architecture of a Deep Neural Network."""
         # obligatory
-        self.name = name or 'default'
+        self.name = name or names.get_first_name(gender='female')
 
         # optional
         self.batch_size = batch_size

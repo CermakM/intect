@@ -20,7 +20,15 @@ layers:
     params:
       pool_size: [2, 2]
       strides: 1
-  - *conv
+  -
+    name: conv
+    type: conv2d
+    params:
+      activation: relu
+      filters: 64
+      padding: SAME
+      strides: [1, 1]
+      kernel_size: [3, 3]
   - *pool
   - &flat
     name: flat
@@ -32,7 +40,7 @@ layers:
     type: dense
     params:
       activation: relu
-      units: 128
+      units: 256
   -
     name: logits
     type: dense

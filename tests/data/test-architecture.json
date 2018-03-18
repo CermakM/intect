@@ -61,7 +61,7 @@
     {
       "type": "dense",
       "params": {
-        "units": 5
+        "units": 2
       },
       "name": "logits"
     }

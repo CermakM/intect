@@ -160,7 +160,7 @@ class Model(object):
             activation = getattr(tf.nn, activation, None)
 
         # Uniquify layer name
-        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'conv'), id=len(self._layers))
+        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'conv'), id=len(self.hidden_layers))
 
         # initialize weights
         conv = tf.layers.conv2d(
@@ -194,7 +194,7 @@ class Model(object):
             activation = getattr(tf.nn, activation, None)
 
         # Uniquify layer name
-        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'dense'), id=len(self._layers))
+        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'dense'), id=len(self.hidden_layers))
 
         dense = tf.layers.dense(
             inputs=self._layers[-1],
@@ -217,7 +217,7 @@ class Model(object):
                               *args, **kwargs):
 
         # Uniquify layer name
-        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'pool'), id=len(self._layers))
+        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'pool'), id=len(self.hidden_layers))
 
         pool = tf.layers.max_pooling2d(
             inputs=self._layers[-1],
