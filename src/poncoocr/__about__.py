@@ -7,7 +7,7 @@ __title__ = "poncoocr"
 __summary__ = "poncoocr is a position-preserving text recognition engine."
 __uri__ = "https://github.com/CermakM/ponco-ocr"
 
-__version__ = "0.1.0"
+__version__ = "0.1.1"
 
 __author__ = "Marek Cermak"
 __email__ = "prace.mcermak@gmail.com"
