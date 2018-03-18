@@ -1,0 +1,48 @@
+name: caramel
+
+optimizer: AdamOptimizer
+batch_size: 16
+learning_rate: 0.01
+
+layers:
+  - &conv
+    name: conv
+    type: conv2d
+    params:
+      activation: relu
+      filters: 32
+      padding: SAME
+      strides: [1, 1]
+      kernel_size: [3, 3]
+  - &pool
+    name: pool
+    type: max_pooling2d
+    params:
+      pool_size: [2, 2]
+      strides: 2
+  -
+    name: conv
+    type: conv2d
+    params:
+      activation: relu
+      filters: 64
+      padding: SAME
+      strides: [1, 1]
+      kernel_size: [3, 3]
+  - *pool
+  - &flat
+    name: flat
+    type: flatten
+    params:
+      null
+  - &fcl
+    name: fcl
+    type: dense
+    params:
+      activation: relu
+      units: 128
+  -
+    name: logits
+    type: dense
+    params:
+      units: 62
