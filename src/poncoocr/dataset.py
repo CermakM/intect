@@ -39,24 +39,29 @@ class Dataset(object):
     def from_directory(cls,
                        directory: str,
                        batch_size=1,
+                       normalize=True,
+                       mode='grayscale',
                        target_size=(32, 32)):
         """Loads a dataset from the given directory using DirectoryIterator.
 
         returns: `Dataset`
         """
-        dir_iter = DirectoryIterator(directory, batch_size, target_size, normalize=True)
+        dir_iter = DirectoryIterator(directory, batch_size, target_size,
+                                     normalize=normalize, mode=mode)
         features, labels = dir_iter.features, dir_iter.labels
 
         return cls(features, labels, classes=dir_iter.classes, shape=dir_iter.img_shape)
 
-    def make_one_shot_iterator(self, batch_size=32, repeat=None, shuffle=True, buffer_size=None):
+    def make_one_shot_iterator(self, batch_size=None, repeat=None,
+                               shuffle=True, buffer_size=None):
 
         dataset = tf.data.Dataset.from_tensor_slices((self._features, self._labels))
         dataset = dataset.repeat(repeat)
         if shuffle:
             dataset = dataset.shuffle(buffer_size=buffer_size or len(self))
 
-        dataset = dataset.batch(batch_size=batch_size)
+        if batch_size:
+            dataset = dataset.batch(batch_size=batch_size)
 
         return dataset.make_one_shot_iterator()
 
@@ -81,7 +86,7 @@ class DirectoryIterator:
             target_size=target_size
         )
 
-        self._classes = self._flow.class_indices,
+        self._classes, = self._flow.class_indices,
         self._samples, = self._flow.samples,
         self._target_size = self._flow.target_size,
         self._img_shape = self._flow.image_shape

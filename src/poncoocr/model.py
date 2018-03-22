@@ -42,6 +42,8 @@ class Model(object):
 
         with tf.variable_scope('input_layer'):
             self._x = inputs['x']
+
+        with tf.variable_scope('labels'):
             self._labels = labels
 
         self._layers = [self._x]
@@ -50,14 +52,30 @@ class Model(object):
             params = dict()
 
         # Configurable and directly accessible properties
-        self.batch_size = tf.constant(getattr(params, 'batch_size', 32), tf.uint8)
-        self.learning_rate = tf.constant(getattr(params, 'learning_rate', 1E-4), tf.float32)
-        self.optimizer = getattr(tf.train, getattr(params, 'optimizer', 'AdamOptimizer'), tf.train.AdamOptimizer)
+        self.batch_size = tf.constant(params.get('batch_size', 32), tf.uint8)
+        self.learning_rate = tf.constant(params.get('learning_rate', 1E-4), tf.float32)
 
-    def __repr__(self):
-        return "<class 'poncoocr.model.Model'" \
-               "  name: {s._name}" \
-               "  layers: {s._layers}>".format(s=self)
+        _decay_dct = params.get('learning_rate_decay', None)
+        if isinstance(_decay_dct, list):  # yaml will pass list here, need to unpack
+            _decay_dct, = _decay_dct
+
+        self.learning_rate_decay = _decay_dct is not None
+        "bool"
+
+        if self.learning_rate_decay:
+            self._decay_steps = tf.constant(_decay_dct.get('decay_steps'), tf.float32)
+            self._decay_rate = tf.constant(_decay_dct.get('decay_rate'), tf.float32)
+
+            self.learning_rate = tf.train.exponential_decay(learning_rate=self.learning_rate,
+                                                            global_step=tf.train.get_global_step(),
+                                                            decay_steps=self._decay_steps,
+                                                            decay_rate=self._decay_rate,
+                                                            )
+
+        tf.summary.scalar(tensor=self.learning_rate, name='learning_rate')
+
+        self.optimizer = getattr(tf.train, params.get('optimizer', 'AdamOptimizer'))
+        "tf.train.Optimizer"
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self._graph_context_manager.__exit__(exc_type, exc_val, exc_tb)
@@ -94,42 +112,45 @@ class Model(object):
     def from_architecture(cls, inputs, labels, arch: architecture.ModelArchitecture, params: dict = None):
         """Initialize the model from the given Architecture"""
         # load network parameters
+        config = arch.get_configurations()
+
         if arch.name == 'default':
             name = None
         else:
             name = arch.name
 
-        arch_params = dict(
-            # model parameters
-            batch_size=arch.batch_size,
-            learning_rate=arch.learning_rate,
-            optimizer=getattr(tf.train, arch.optimizer, tf.train.AdamOptimizer),
-        )
-
         if params:
-            arch_params.update(params)
+            config.update(params)
 
         model = cls(
             inputs=inputs,
             labels=labels,
             name=name,
-            params=params
+            params=config,
         )
 
         # Load each layer from architecture and add it to the model
-        for layer in arch.layers:
+        for i, layer in enumerate(arch.layers):
             # Construct a layer by the type specified in the architecture
             config = layer.params or {}
 
-            model.add_layer(layer_type=layer.type, name=layer.name, **config)
+            if i < len(arch.layers):
+                scope = 'hidden_layer_%d' % i
+            else:
+                scope = 'output_layer'
+
+            model.add_layer(layer_type=layer.type, scope=scope, name=layer.name, **config)
 
         return model
 
-    def add_layer(self, layer_type, *args, **kwargs):
+    def add_layer(self, layer_type, scope=None, *args, **kwargs):
         """Add layer specified by `layer_type` argument to the model."""
         assert isinstance(layer_type, str), "expected argument `layer_type` of type `%s`" % type(str)
 
-        with tf.variable_scope('hidden_layer_%d' % len(self.hidden_layers)):
+        if scope is None:
+            scope = 'hidden_layer_%d' % len(self.hidden_layers)
+
+        with tf.variable_scope(scope):
 
             if layer_type == 'conv2d':
                 self.add_conv_layer(*args, **kwargs)
@@ -176,6 +197,7 @@ class Model(object):
 
         # add tensorboard summaries
         tf.summary.scalar(name='weights', tensor=tf.reduce_mean(conv))
+        tf.summary.scalar(name='sparsity', tensor=tf.nn.zero_fraction(conv))
         tf.summary.histogram(name=layer_name, values=conv)
 
         self._layers.append(conv)
@@ -206,6 +228,7 @@ class Model(object):
 
         # add tensorboard summaries
         tf.summary.scalar(name='weights', tensor=tf.reduce_mean(dense))
+        tf.summary.scalar(name='sparsity', tensor=tf.nn.zero_fraction(dense))
         tf.summary.histogram(name=layer_name, values=dense)
 
         self._layers.append(dense)
@@ -229,6 +252,7 @@ class Model(object):
 
         # add tensorboard summaries
         tf.summary.scalar(name='weights', tensor=tf.reduce_mean(pool))
+        tf.summary.scalar(name='sparsity', tensor=tf.nn.zero_fraction(pool))
         tf.summary.histogram(name=layer_name, values=pool)
 
         self._layers.append(pool)

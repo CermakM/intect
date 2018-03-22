@@ -1,15 +1,20 @@
 name: default
 
 optimizer: AdamOptimizer
-batch_size: 32
-learning_rate: 0.001
+batch_size: 64
+
+learning_rate: 0.005
+learning_rate_decay:
+  -
+    decay_steps: 500
+    decay_rate:  0.90
 
 layers:
   - &conv
     name: conv
     type: conv2d
     params:
-      activation: relu
+      activation: leaky_relu
       filters: 32
       padding: SAME
       strides: [1, 1]
@@ -19,16 +24,8 @@ layers:
     type: max_pooling2d
     params:
       pool_size: [2, 2]
-      strides: 1
-  -
-    name: conv
-    type: conv2d
-    params:
-      activation: relu
-      filters: 64
-      padding: SAME
-      strides: [1, 1]
-      kernel_size: [3, 3]
+      strides: 2
+  - *conv
   - *pool
   - &flat
     name: flat
@@ -39,10 +36,11 @@ layers:
     name: fcl
     type: dense
     params:
-      activation: relu
-      units: 256
+      activation: sigmoid
+      units: 128
   -
     name: logits
     type: dense
     params:
       units: 62
+

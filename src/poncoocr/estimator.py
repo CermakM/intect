@@ -20,7 +20,7 @@ class Estimator(object):
 
     def __init__(self,
                  model_architecture: ModelArchitecture,
-                 train_data: Dataset,
+                 train_data: Dataset=None,
                  test_data: Dataset=None,
                  model_fn=None,
                  model_dir=None,
@@ -31,9 +31,14 @@ class Estimator(object):
         self._test_data = test_data
         self._params = params or dict()
 
+        self._train_hooks = list()
+        self._eval_hooks = list()
+
+        # create cache directory if necessary
         if not os.path.isdir(self.__model_cache_dir):
             os.mkdir(self.__model_cache_dir)
 
+        # create model specific sub directory in cache dir
         self._cache_dir = model_dir
         if self._cache_dir is None:
             self._cache_dir = tempfile.mkdtemp(dir=os.path.join(self.__model_cache_dir),
@@ -43,6 +48,17 @@ class Estimator(object):
             self._cache_dir = os.path.join(self.__model_cache_dir, self._cache_dir)
             if not os.path.isdir(self._cache_dir):
                 os.mkdir(path=self._cache_dir)
+
+        # create logging hook for training accuracy and learning rate
+        logging_hook = tf.train.LoggingTensorHook(
+            tensors={
+                'accuracy': 'log_accuracy',
+                'loss': 'log_loss',
+                'learning_rate': 'log_learning_rate',
+            },
+            every_n_iter=100
+        )
+        self._train_hooks.append(logging_hook)
 
         self._estimator = self._get_estimator(model_fn=model_fn)
 
@@ -56,31 +72,56 @@ class Estimator(object):
 
     @property
     def classes(self):
-        return self._test_data.classes
+        if not any([self._train_data, self._test_data]):
+            raise AttributeError("No data available to the Estimator, "
+                                 "property `classes` cannot be accessed.")
+        return (self._train_data or self._test_data).classes
 
-    def train(self, num_epochs=1, buffer_size=None):
+    def train(self, train_data: Dataset = None, steps=None, buffer_size=None, hooks=None):
         """Train the estimator.
 
-        :param num_epochs: number of epochs to be the estimator trained for.
+        :param steps: number of steps to be the estimator trained for.
         :param buffer_size: size of the buffer that is used for shuffling.
         If `None`, buffer size is chosen according to the size of the training data.
         """
+
+        if not train_data:
+            train_data = self._train_data
+
+        assert train_data is not None, "`train_data` has not been provided."
+
+        train_hooks = self._train_hooks
+        train_hooks.extend(hooks or [])
+
+        _steps_in_epoch = len(train_data) // self._arch.batch_size
+        if steps is None:
+            if len(train_data) < self._arch.batch_size:
+                steps = len(train_data)
+            else:
+                steps = _steps_in_epoch
+
         self._estimator.train(
             input_fn=lambda: self._dataset_input_fn(
-                dataset=self._train_data,
+                dataset=train_data,
                 repeat=None,
-                buffer_size=buffer_size or len(self._train_data)
+                buffer_size=buffer_size or len(train_data)
             ),
-            steps=len(self._train_data) / self._arch.batch_size * num_epochs
+            steps=steps,
+            hooks=train_hooks,
         )
 
-    def evaluate(self) -> dict:
+    def evaluate(self, steps=None, hooks=None) -> dict:
         """Evaluate accuracy of the estimator."""
+        if not self.test_data:
+            raise TypeError("`test_data` has not been provided for evaluation.")
         results = self._estimator.evaluate(
             input_fn=lambda: self._dataset_input_fn(
                 dataset=self._test_data,
-                repeat=1,
+                repeat=1 if steps is None else None,
+                buffer_size=len(self._test_data) // 10,  # shuffle only 10% of the test data
             ),
+            steps=steps,
+            hooks=hooks,
         )
 
         return results
@@ -95,6 +136,10 @@ class Estimator(object):
         )
 
         return predictions
+
+    def save(self):
+        """Saves the estimator for future restore and serving."""
+        raise NotImplementedError
 
     def _input_fn(self, features, labels, one_hot=False, depth=None, shuffle=False, num_epochs=None) -> tuple:
         """Input function for the estimator.
@@ -119,19 +164,17 @@ class Estimator(object):
 
         return _fn()
 
-    def _dataset_input_fn(self, dataset: Dataset, repeat=None, buffer_size=None) -> tuple:
+    def _dataset_input_fn(self, dataset: Dataset, repeat=None, shuffle=True, buffer_size=None):
         """Input function for the estimator.
         Loads the dataset from a directory given by `path` and returns tuple ({'x': features}, {'labels': labels)."""
         buffer_size = buffer_size or len(dataset)
 
-        iterator = dataset.make_one_shot_iterator(repeat=repeat, shuffle=buffer_size,
-                                                  batch_size=self._arch.batch_size)
-        # Use the graph invoked by estimator._train_model
-        with tf.variable_scope('input_layer', reuse=True):
-            features, labels = iterator.get_next()
-            print(features, labels)
+        tf_dataset = tf.data.Dataset.from_tensor_slices((dict(x=dataset.features), dataset.labels))
+        tf_dataset = tf_dataset.repeat(repeat)
+        if shuffle:
+            tf_dataset = tf_dataset.shuffle(buffer_size=buffer_size or len(dataset))
 
-        return {'x': features}, labels
+        return tf_dataset.batch(batch_size=self._arch.batch_size)
 
     def _predict_input_fn(self, path: str) -> dict:
 
@@ -167,7 +210,11 @@ class Estimator(object):
         return tf.estimator.Estimator(
             model_fn=model_fn or self._model_fn,
             model_dir=self._cache_dir,
-            params=self._params
+            params=self._params,
+            config=tf.estimator.RunConfig(
+                # Passing None to save_summary_steps disables Estimator's SummaryHook
+                # save_summary_steps=None,
+            )
         )
 
     def _model_fn(self, features, labels, mode, params=None) -> tf.estimator.EstimatorSpec:
@@ -175,7 +222,7 @@ class Estimator(object):
         :returns: EstimatorSpec, a custom estimator specifications
         """
 
-        tf.summary.image('images', features['x'], 6)
+        tf.summary.image('images', features['x'], max_outputs=3)
 
         model = Model.from_architecture(
             inputs=features,
@@ -209,9 +256,11 @@ class Estimator(object):
             # reduces the cross entropy batch-tensor to a single number
             # used for optimization of the nn
             loss = tf.reduce_mean(cross_entropy)
+            tf.summary.scalar('train_loss', loss)
 
-            # optimizer for improving nn
-            optimizer = model.optimizer()
+            # initialize optimizer
+            optimizer = model.optimizer(learning_rate=model.learning_rate)
+            tf.logging.info('Optimizer: %s' % optimizer)
 
             # get the tf op for single-step optimization
             train_op = optimizer.minimize(
@@ -219,20 +268,47 @@ class Estimator(object):
                 global_step=tf.train.get_global_step()
             )
 
+            # create confusion matrix
+            num_classes = len(self.classes)
+            batch_confusion = tf.confusion_matrix(
+                labels=tf.argmax(model.labels, axis=1),
+                predictions=y_pred_cls,
+                num_classes=num_classes
+            )
+            confusion = tf.Variable(
+                initial_value=tf.zeros(shape=(num_classes, num_classes), dtype=tf.int32),
+                name='confusion',
+            )
+            confusion = confusion.assign(confusion + batch_confusion)
+            confusion_image = tf.reshape(
+                tf.cast(confusion, tf.float32),
+                [1, num_classes, num_classes, 1]
+            )
+
+            tf.summary.image(tensor=confusion_image, name='confusion')
+
             # define evaluation metrics - the classification accuracy
             # NOTE: assuming model labels to be one-hot encoded, therefore argmax needs to be performed first
-            accuracy = tf.metrics.accuracy(labels=tf.argmax(model.labels, axis=1), predictions=y_pred_cls)
-            tf.summary.scalar(name='accuracy', tensor=accuracy[1])
+            accuracy = tf.metrics.accuracy(labels=tf.argmax(model.labels, axis=1), predictions=y_pred_cls,
+                                           name='eval_accuracy')
+
+            tf.summary.scalar(tensor=accuracy[1], name='train_accuracy')
 
             metrics = {
                 'accuracy': accuracy
             }
 
+            # tensors to be logged
+            tf.identity(accuracy[1], 'log_accuracy')
+            tf.identity(loss, 'log_loss')
+            tf.identity(model.learning_rate, 'log_learning_rate')
+
+            # create summary hook
             spec = tf.estimator.EstimatorSpec(
                 mode=mode,
                 loss=loss,
                 train_op=train_op,
-                eval_metric_ops=metrics
+                eval_metric_ops=metrics,
             )
 
         return spec

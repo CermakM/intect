@@ -1,13 +1,18 @@
 """Module containing common utility functions."""
 
+import os
 import time
 import threading
 
+import numpy as np
 import tensorflow as tf
 
 from collections import Counter
 from collections.abc import Mapping
+from itertools import cycle
+from math import sqrt
 from matplotlib.pyplot import plot as plt
+from PIL import Image
 
 from src import poncoocr as pcr
 
@@ -15,6 +20,9 @@ from src import poncoocr as pcr
 # FUNCTIONS
 
 def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
+    """Make a hyper parameter string from architecture spec.
+    The string can then be used to distinguish various runs in tensorboard.
+    """
     types = [layer.type for layer in arch.layers]
     bag = Counter(types)
 
@@ -27,6 +35,40 @@ def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
     )
 
     return hparam_string
+
+
+def make_sprite_image(images, num_images=1024, thumbnail=(32, 32), fill='#fff', dir_path=None):
+    """Create sprite image from a set of images.
+    """
+
+    assert num_images > 0, "Number of images must be > 0, given: %d" % num_images
+    assert sqrt(num_images) % 2 == 0, "argument `num_images` must be power of 2"
+
+    images = np.uint8(images)
+
+    iterator = cycle(images)
+    "iterator yielding tuple of (image, metadata)"
+
+    sprite_fp = os.path.join(dir_path or '', 'sprite.png')
+
+    # create white board
+    board = Image.new(mode='L', size=tuple(int(sqrt(num_images)) * np.array(thumbnail)), color=fill)
+
+    pos = 0, 0
+    for im_index in range(1, num_images):
+        img, meta = next(iterator)
+        img = img.reshape(thumbnail)
+        img = Image.fromarray(img).convert('L')
+        board.paste(img, pos)
+
+        if im_index % sqrt(num_images) == 0:
+            pos = 0, pos[1] + thumbnail[1]
+        else:
+            pos = pos[0] + thumbnail[0], pos[1]
+
+    board.save(fp=sprite_fp)
+
+    return sprite_fp
 
 
 # CLASSES

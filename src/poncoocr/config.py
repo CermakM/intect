@@ -12,35 +12,35 @@ _data_dir = os.path.dirname(data.__file__)
 
 tf.app.flags.DEFINE_bool(
     name='json',
-    default=False,
+    default=None,
     help="Whether to use the JSON parser to parse the model architecture file."
          "By default architecture is expected to be in yaml format."
 )
 
+tf.app.flags.DEFINE_bool(
+    name='save',
+    default=None,
+    help="Save the trained estimator. The estimator will be saved in a directory called `export/$ARCH_NAME`"
+)
+
 tf.app.flags.DEFINE_string(
-    name='use_arch_dir',
+    name='arch_dir',
     default=None,
     help="Path to directory of {.yaml, .json} files containing model specifications."
 )
 
-# Define TensorFlow numeric flags
 
-tf.app.flags.DEFINE_integer(
-    name='buffer_size',
-    default=20000,
-    help="Size of the buffer which is used for shuffling images."
-         "Indicates the number of images that can be shuffled."
-)
+# Define TensorFlow numeric flags
 
 tf.app.flags.DEFINE_integer(
     name='train_epochs',
     default=10,
-    help="Number of training steps. This means the number of batches that is the model being trained on."
+    help="Number of training epochs. This means the number of times the set is iterated over."
 )
 
 tf.app.flags.DEFINE_integer(
-    name='test_steps',
-    default=500,
+    name='train_steps',
+    default=None,
     help="Number of training steps. This means the number of batches that is the model being trained on."
 )
 
@@ -61,5 +61,11 @@ tf.app.flags.DEFINE_string(
 tf.app.flags.DEFINE_string(
     name='model_arch',
     default=os.path.join(_data_dir, 'model/default-architecture.yaml'),
-    help="Path to the directory storing sprites."
+    help="Path to the directory storing model architecture."
+)
+
+tf.app.flags.DEFINE_string(
+    name='sprite_dir',
+    default=os.path.join(_data_dir, 'sprites/'),
+    help="Path to the directory storing data sprites and their metadata."
 )

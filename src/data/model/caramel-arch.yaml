@@ -1,15 +1,20 @@
 name: caramel
 
 optimizer: AdamOptimizer
-batch_size: 16
-learning_rate: 0.01
+batch_size: 108
+
+learning_rate: 0.005
+learning_rate_decay:
+  -
+    decay_steps: 500
+    decay_rate:  0.90
 
 layers:
   - &conv
     name: conv
     type: conv2d
     params:
-      activation: relu
+      activation: leaky_relu
       filters: 32
       padding: SAME
       strides: [1, 1]
@@ -20,15 +25,7 @@ layers:
     params:
       pool_size: [2, 2]
       strides: 2
-  -
-    name: conv
-    type: conv2d
-    params:
-      activation: relu
-      filters: 64
-      padding: SAME
-      strides: [1, 1]
-      kernel_size: [3, 3]
+  - *conv
   - *pool
   - &flat
     name: flat
@@ -39,7 +36,7 @@ layers:
     name: fcl
     type: dense
     params:
-      activation: relu
+      activation: sigmoid
       units: 128
   -
     name: logits

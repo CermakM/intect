@@ -34,6 +34,14 @@ class ModelArchitecture(utils.AttrDict):
         # load the rest of the values as attr dict
         super().__init__(**kwargs)
 
+    def get_configurations(self) -> dict:
+        """Return Architecture configurations."""
+        config = self.__dict__.copy()
+        config.pop('name')
+        config.pop('layers')
+
+        return config
+
     @classmethod
     def from_json(cls, fp: str):
         """Loads the architecture from .json file."""
