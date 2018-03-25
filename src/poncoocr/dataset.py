@@ -13,12 +13,12 @@ class Dataset(object):
                  features,
                  labels,
                  classes: dict = None,
-                 shape: typing.Sequence = None):
+                 img_shape: typing.Sequence = None):
         """Initialize Dataset."""
         self._features = features
         self._labels = labels
         self._classes = classes
-        self._shape = shape
+        self._img_shape = img_shape
 
     def __len__(self):
         return len(self._labels)
@@ -32,8 +32,12 @@ class Dataset(object):
         return self._labels
 
     @property
-    def classes(self):
+    def classes(self) -> dict:
         return self._classes
+
+    @property
+    def img_shape(self):
+        return self._img_shape
 
     @classmethod
     def from_directory(cls,
@@ -50,7 +54,7 @@ class Dataset(object):
                                      normalize=normalize, mode=mode)
         features, labels = dir_iter.features, dir_iter.labels
 
-        return cls(features, labels, classes=dir_iter.classes, shape=dir_iter.img_shape)
+        return cls(features, labels, classes=dir_iter.classes, img_shape=dir_iter.img_shape)
 
     def make_one_shot_iterator(self, batch_size=None, repeat=None,
                                shuffle=True, buffer_size=None):
@@ -86,7 +90,9 @@ class DirectoryIterator:
             target_size=target_size
         )
 
-        self._classes, = self._flow.class_indices,
+        # Keras by default stores class_indices as {[str]class: [int]index} dict,
+        # we want a reverse mapping
+        self._classes = {v: k for k, v in self._flow.class_indices.items()}
         self._samples, = self._flow.samples,
         self._target_size = self._flow.target_size,
         self._img_shape = self._flow.image_shape
@@ -124,7 +130,8 @@ class DirectoryIterator:
         return np.concatenate(self._labels)
 
     @property
-    def classes(self):
+    def classes(self) -> dict:
+        """Returns dictionary of mapping class -> class index."""
         return self._classes
 
     @property

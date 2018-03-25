@@ -19,6 +19,54 @@ from src import poncoocr as pcr
 
 # FUNCTIONS
 
+def as_graph_element(obj):
+    """Retrieves Graph element."""
+    graph = tf.get_default_graph()
+    if not isinstance(obj, str):
+        if not hasattr(obj, "graph") or obj.graph != graph:
+            raise ValueError("Passed %s should have graph attribute that is equal "
+                             "to current graph %s." % (obj, graph))
+        return obj
+    if ":" in obj:
+        element = graph.as_graph_element(obj)
+    else:
+        element = graph.as_graph_element(obj + ":0")
+        # Check that there is no :1 (e.g. it's single output).
+        try:
+            graph.as_graph_element(obj + ":1")
+        except (KeyError, ValueError):
+            pass
+        else:
+            raise ValueError("Name %s is ambiguous, "
+                             "as this `Operation` has multiple outputs "
+                             "(at least 2)." % obj)
+    return element
+
+
+def label_to_class(labels, class_dct, one_hot=True, decode=False):
+    """Convert a tensor of labels into a tensor of classes given a class dict.
+
+    :param labels: np.array or iterable of labels
+    :param class_dct: dict, mapping from label index to a real class
+    :param one_hot: bool, whether `labels` is one_hot encoded
+    :param decode: whether to decode label strings from unicode representation
+
+    :returns: tensor of the shape (len_labels,) of classed labels
+    """
+    # TODO: handle TensorFlow tensors as well
+    if one_hot:
+        labels = np.argmax(labels, axis=1)
+
+    # labels are unicode representation of a letter, if `decode` is specified, return
+    # the decoded character
+    if decode:
+        classes = np.array([chr(int(class_dct[label])) for label in labels], dtype=np.unicode_)
+    else:
+        classes = np.array([class_dct[label] for label in labels], dtype=np.unicode_)
+
+    return classes
+
+
 def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
     """Make a hyper parameter string from architecture spec.
     The string can then be used to distinguish various runs in tensorboard.
@@ -37,38 +85,61 @@ def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
     return hparam_string
 
 
-def make_sprite_image(images, num_images=1024, thumbnail=(32, 32), fill='#fff', dir_path=None):
+def make_sprite_image(images,
+                      metadata,
+                      num_images=1024,
+                      thumbnail=(32, 32),
+                      fill='#fff',
+                      renormalize=True,
+                      dir_path=None) -> tuple:
     """Create sprite image from a set of images.
+
+    :returns: "tuple"(str, str), absolute path to the newly created sprite and metadata
     """
 
     assert num_images > 0, "Number of images must be > 0, given: %d" % num_images
-    assert sqrt(num_images) % 2 == 0, "argument `num_images` must be power of 2"
 
+    if renormalize:
+        images *= 255
+
+    # turn the images into uint8 format - further improves renormalization
     images = np.uint8(images)
 
-    iterator = cycle(images)
+    iterator = cycle(zip(images, metadata))
     "iterator yielding tuple of (image, metadata)"
 
-    sprite_fp = os.path.join(dir_path or '', 'sprite.png')
+    sprite_fp = os.path.join(os.path.abspath(dir_path or ''), 'sprite.png')
+    metadata_fp = os.path.join(os.path.abspath(dir_path or ''), 'metadata.tsv')
+
+    if os.path.isdir(sprite_fp):
+        tf.logging.info("Sprite `%s` already exists in the directory, skipping." % sprite_fp)
+        return sprite_fp, metadata_fp
+
+    # open file handle for metadata
+    meta_tsv = open(metadata_fp, 'w')
 
     # create white board
     board = Image.new(mode='L', size=tuple(int(sqrt(num_images)) * np.array(thumbnail)), color=fill)
 
     pos = 0, 0
-    for im_index in range(1, num_images):
+    for im_index in range(num_images):
         img, meta = next(iterator)
         img = img.reshape(thumbnail)
         img = Image.fromarray(img).convert('L')
         board.paste(img, pos)
 
-        if im_index % sqrt(num_images) == 0:
+        if im_index and im_index % sqrt(num_images) == 0:
             pos = 0, pos[1] + thumbnail[1]
         else:
             pos = pos[0] + thumbnail[0], pos[1]
 
-    board.save(fp=sprite_fp)
+        meta_tsv.write("%s\n" % meta)
 
-    return sprite_fp
+    board.save(fp=sprite_fp)
+    # close the file handle
+    meta_tsv.close()
+
+    return sprite_fp, metadata_fp
 
 
 # CLASSES

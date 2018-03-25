@@ -3,7 +3,6 @@
 import unittest
 
 import tensorflow as tf
-from PIL import Image
 
 # The imports will need to be fixed to test installed version instead of the dev one
 from . import config

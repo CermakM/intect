@@ -47,13 +47,23 @@ class Model(object):
             self._labels = labels
 
         self._layers = [self._x]
+        self._layer_name_dct = dict()
+        "Dictionary of ([str]layer_name, [int]count)"
 
         if params is None:
             params = dict()
 
         # Configurable and directly accessible properties
-        self.batch_size = tf.constant(params.get('batch_size', 32), tf.uint8)
-        self.learning_rate = tf.constant(params.get('learning_rate', 1E-4), tf.float32)
+        for param, default in [('batch_size', None), ('learning_rate', None)]:
+            # Make sure that flags are privileged from yaml arguments
+            value = tf.app.flags.FLAGS.get_flag_value(param, default)
+            if value is None:
+                try:
+                    value = params.get(param)
+                except KeyError:
+                    raise("attribute `{}` cannot be of type {}.".format(param, type(None)))
+
+            self.__setattr__(param, tf.constant(value, tf.float32))
 
         _decay_dct = params.get('learning_rate_decay', None)
         if isinstance(_decay_dct, list):  # yaml will pass list here, need to unpack
@@ -98,7 +108,7 @@ class Model(object):
 
     @property
     def hidden_layers(self):
-        return tuple(self._layers[1:])
+        return tuple(self._layers[1:-1])
 
     @property
     def logits(self):
@@ -134,7 +144,7 @@ class Model(object):
             # Construct a layer by the type specified in the architecture
             config = layer.params or {}
 
-            if i < len(arch.layers):
+            if i < len(arch.layers) - 1:
                 scope = 'hidden_layer_%d' % i
             else:
                 scope = 'output_layer'
@@ -148,7 +158,7 @@ class Model(object):
         assert isinstance(layer_type, str), "expected argument `layer_type` of type `%s`" % type(str)
 
         if scope is None:
-            scope = 'hidden_layer_%d' % len(self.hidden_layers)
+            scope = 'layer_%d' % len(self.hidden_layers)
 
         with tf.variable_scope(scope):
 
@@ -181,7 +191,7 @@ class Model(object):
             activation = getattr(tf.nn, activation, None)
 
         # Uniquify layer name
-        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'conv'), id=len(self.hidden_layers))
+        layer_name = self.get_unique_layer_name(name or kwargs.get('name', 'conv'))
 
         # initialize weights
         conv = tf.layers.conv2d(
@@ -216,7 +226,7 @@ class Model(object):
             activation = getattr(tf.nn, activation, None)
 
         # Uniquify layer name
-        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'dense'), id=len(self.hidden_layers))
+        layer_name = self.get_unique_layer_name(name or kwargs.get('name', 'dense'))
 
         dense = tf.layers.dense(
             inputs=self._layers[-1],
@@ -240,7 +250,7 @@ class Model(object):
                               *args, **kwargs):
 
         # Uniquify layer name
-        layer_name = "{name}_{id}".format(name=name or getattr(kwargs, 'type', 'pool'), id=len(self.hidden_layers))
+        layer_name = self.get_unique_layer_name(name or kwargs.get('name', 'pool'))
 
         pool = tf.layers.max_pooling2d(
             inputs=self._layers[-1],
@@ -259,3 +269,14 @@ class Model(object):
 
     def save(self):
         raise NotImplementedError
+
+    def get_unique_layer_name(self, name: str):
+        if name in self._layer_name_dct:
+            layer_name = "{name}_{id}".format(name=name, id=self._layer_name_dct[name])
+            self._layer_name_dct[name] += 1
+        else:
+            layer_name = name
+            self._layer_name_dct[name] = 1
+
+        return layer_name
+

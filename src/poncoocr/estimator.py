@@ -12,6 +12,7 @@ from PIL import Image
 from .architecture import ModelArchitecture
 from .dataset import Dataset
 from .model import Model
+from .session import EmbeddingHook
 
 
 class Estimator(object):
@@ -25,7 +26,7 @@ class Estimator(object):
                  model_fn=None,
                  model_dir=None,
                  params: dict = None):
-        """Initialize estimator initializer with a model to be used for the estimator."""
+        """Initialize estimator parameters and create training and evaluation hooks."""
         self._arch = model_architecture
         self._train_data = train_data
         self._test_data = test_data
@@ -49,6 +50,31 @@ class Estimator(object):
             if not os.path.isdir(self._cache_dir):
                 os.mkdir(path=self._cache_dir)
 
+        self._embedding_dir = os.path.join(self._cache_dir, 'projector')
+        if not os.path.isdir(self._embedding_dir):
+            os.mkdir(self._embedding_dir)
+
+        # create sprite and its metadata for embeddings
+        # if tf.flags.FLAGS.is_parsed():
+        #     default_embedding_size = tf.flags.FLAGS.embedding_size
+        # else:
+        #     # set an implicit value in case no other declaration found
+        #     default_embedding_size = min(2048, len(train_data))
+
+        # self._embedding_size = self._params.get('embedding_size', default_embedding_size)
+        # self._sprite, self._metadata = utils.make_sprite_image(
+        #     images=train_data.features[:self._embedding_size],
+        #     # convert labels to classes and use it as metadata
+        #     metadata=utils.label_to_class(
+        #         labels=train_data.labels[:self._embedding_size],
+        #         class_dct=train_data.classes,
+        #         decode=True,
+        #     ),
+        #     num_images=self._embedding_size,
+        #     dir_path=self._embedding_dir,
+        #     renormalize=True,
+        # )
+
         # create logging hook for training accuracy and learning rate
         logging_hook = tf.train.LoggingTensorHook(
             tensors={
@@ -58,7 +84,18 @@ class Estimator(object):
             },
             every_n_iter=100
         )
-        self._train_hooks.append(logging_hook)
+
+        # create embedding hook
+        embedding_hook = EmbeddingHook(
+            tensors=['embedding_input', 'embedding_labels'],
+            batch_size=self._arch.batch_size,
+            class_dct=self._train_data.classes,
+            logdir=self._embedding_dir,
+            every_n_steps=100
+        )
+
+        self._train_hooks.extend([logging_hook])
+        self._eval_hooks.extend([logging_hook])
 
         self._estimator = self._get_estimator(model_fn=model_fn)
 
@@ -77,7 +114,7 @@ class Estimator(object):
                                  "property `classes` cannot be accessed.")
         return (self._train_data or self._test_data).classes
 
-    def train(self, train_data: Dataset = None, steps=None, buffer_size=None, hooks=None):
+    def train(self, train_data: Dataset = None, steps=None, num_epochs=1, buffer_size=None, hooks=None):
         """Train the estimator.
 
         :param steps: number of steps to be the estimator trained for.
@@ -90,38 +127,44 @@ class Estimator(object):
 
         assert train_data is not None, "`train_data` has not been provided."
 
-        train_hooks = self._train_hooks
+        train_hooks = self._train_hooks.copy()
         train_hooks.extend(hooks or [])
 
-        _steps_in_epoch = len(train_data) // self._arch.batch_size
         if steps is None:
             if len(train_data) < self._arch.batch_size:
                 steps = len(train_data)
             else:
-                steps = _steps_in_epoch
+                # number of steps in one epoch
+                steps = len(train_data) // self._arch.batch_size
 
         self._estimator.train(
             input_fn=lambda: self._dataset_input_fn(
                 dataset=train_data,
+                batch_size=self._arch.batch_size,
                 repeat=None,
                 buffer_size=buffer_size or len(train_data)
             ),
-            steps=steps,
+            steps=steps * num_epochs,
             hooks=train_hooks,
         )
 
     def evaluate(self, steps=None, hooks=None) -> dict:
         """Evaluate accuracy of the estimator."""
+
+        eval_hooks = self._eval_hooks.copy()
+        eval_hooks.extend(hooks or [])
+
         if not self.test_data:
             raise TypeError("`test_data` has not been provided for evaluation.")
         results = self._estimator.evaluate(
             input_fn=lambda: self._dataset_input_fn(
                 dataset=self._test_data,
+                batch_size=1024,
                 repeat=1 if steps is None else None,
                 buffer_size=len(self._test_data) // 10,  # shuffle only 10% of the test data
             ),
             steps=steps,
-            hooks=hooks,
+            hooks=eval_hooks,
         )
 
         return results
@@ -164,7 +207,7 @@ class Estimator(object):
 
         return _fn()
 
-    def _dataset_input_fn(self, dataset: Dataset, repeat=None, shuffle=True, buffer_size=None):
+    def _dataset_input_fn(self, dataset: Dataset, repeat=None, shuffle=True, batch_size=None, buffer_size=None):
         """Input function for the estimator.
         Loads the dataset from a directory given by `path` and returns tuple ({'x': features}, {'labels': labels)."""
         buffer_size = buffer_size or len(dataset)
@@ -174,7 +217,10 @@ class Estimator(object):
         if shuffle:
             tf_dataset = tf_dataset.shuffle(buffer_size=buffer_size or len(dataset))
 
-        return tf_dataset.batch(batch_size=self._arch.batch_size)
+        if batch_size:
+            tf_dataset = tf_dataset.batch(batch_size=batch_size)
+
+        return tf_dataset
 
     def _predict_input_fn(self, path: str) -> dict:
 
@@ -230,6 +276,10 @@ class Estimator(object):
             arch=self._arch,
             params=params,
         )
+
+        # add to the graph an embedding tensor which will be fetched by EmbeddingHook
+        tf.identity(model.hidden_layers[-1], 'embedding_input')
+        tf.identity(model.labels, 'embedding_labels')
 
         logits = model.logits
 
@@ -303,12 +353,12 @@ class Estimator(object):
             tf.identity(loss, 'log_loss')
             tf.identity(model.learning_rate, 'log_learning_rate')
 
-            # create summary hook
             spec = tf.estimator.EstimatorSpec(
                 mode=mode,
                 loss=loss,
                 train_op=train_op,
                 eval_metric_ops=metrics,
+                scaffold=tf.train.Scaffold(summary_op=tf.summary.merge_all())
             )
 
         return spec

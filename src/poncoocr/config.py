@@ -11,6 +11,18 @@ _data_dir = os.path.dirname(data.__file__)
 # Define TensorFlow app arguments
 
 tf.app.flags.DEFINE_bool(
+    name='train',
+    default=True,
+    help="Whether to train the network."
+)
+
+tf.app.flags.DEFINE_bool(
+    name='evaluate',
+    default=True,
+    help="Whether to evaluate the network."
+)
+
+tf.app.flags.DEFINE_bool(
     name='json',
     default=None,
     help="Whether to use the JSON parser to parse the model architecture file."
@@ -36,6 +48,24 @@ tf.app.flags.DEFINE_integer(
     name='train_epochs',
     default=10,
     help="Number of training epochs. This means the number of times the set is iterated over."
+)
+
+tf.app.flags.DEFINE_integer(
+    name='batch_size',
+    default=None,
+    help="Batch size which will be used for training"
+)
+
+tf.app.flags.DEFINE_float(
+    name='learning_rate',
+    default=None,
+    help="Learning rate parameter used for training."
+)
+
+tf.app.flags.DEFINE_integer(
+    name='embedding_size',
+    default=2048,
+    help="Number of images passed to the embedding."
 )
 
 tf.app.flags.DEFINE_integer(

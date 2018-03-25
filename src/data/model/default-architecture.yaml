@@ -1,13 +1,13 @@
 name: default
 
 optimizer: AdamOptimizer
-batch_size: 64
+batch_size: 100
 
 learning_rate: 0.005
 learning_rate_decay:
   -
-    decay_steps: 500
-    decay_rate:  0.90
+    decay_steps: 1000
+    decay_rate:  0.93
 
 layers:
   - &conv

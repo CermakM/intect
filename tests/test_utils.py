@@ -1,7 +1,6 @@
 """Tests for utils module."""
 
 import os
-import tempfile
 import time
 import unittest
 
@@ -48,15 +47,25 @@ class TestUtils(unittest.TestCase):
         ))
 
     def test_make_sprite_image(self):
-        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH, normalize=False)
+        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
         features, labels = dataset.features, np.argmax(dataset.labels, axis=1)
 
-        _dir = tempfile.mkdtemp(prefix='test_')
-
-        sprite, meta = pcr.utils.make_sprite_image(images=features, metadata=labels, num_images=100, dir_path=_dir)
+        sprite, meta = pcr.utils.make_sprite_image(
+            images=features, metadata=labels, num_images=100, dir_path=config.TEST_LOGDIR)
 
         # check that sprite.png and metadata.tsv have been created
-        files = set(os.listdir(_dir))
+        files = set(os.listdir(config.TEST_LOGDIR))
         print(sprite, meta, files)
         self.assertTrue(os.path.basename(sprite) in files)
         self.assertTrue(os.path.basename(meta) in files)
+
+    def test_label_to_class(self):
+        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
+        classes = pcr.utils.label_to_class(
+            labels=dataset.labels,
+            class_dct=dataset.classes
+        )
+
+        self.assertIsNotNone(classes)
+        self.assertEqual(len(classes), len(dataset))
+

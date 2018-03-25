@@ -43,25 +43,33 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
             model_dir=pcr.utils.make_hparam_string(arch)
         )
 
-        start = time.time()
+        if FLAGS.train:
+            start = time.time()
+            tf.logging.info('Training the architecture: `%s`' % arch.name)
 
-        tf.logging.info('Training the architecture: `%s`' % arch.name)
-        for epoch in range(FLAGS.train_epochs):
+            estimator.train(steps=FLAGS.train_steps, num_epochs=FLAGS.train_epochs)
 
-            estimator.train(steps=FLAGS.train_steps)
+            tf.logging.info("Training took: {time} s.".format(time=time.time() - start))
 
+        if FLAGS.evaluate:
             evaluation = estimator.evaluate()
-            print("Evaluating epoch %d:" % epoch, evaluation)
-
-        tf.logging.info("Training took: {time} s.".format(time=time.time() - start))
+            print('Model evaluation after %d epochs: %s' % (FLAGS.train_epochs, evaluation))
 
         if FLAGS.save:
             raise NotImplementedError
-            export_dir = "save/%s" % arch.name
-            os.makedirs(export_dir, exist_ok=True)
-            estimator.save()
+            # export_dir = "save/%s" % arch.name
+            # os.makedirs(export_dir, exist_ok=True)
+            # estimator.save()
 
 
 if __name__ == '__main__':
+    from tests import config
 
-    tf.app.run(main=main)
+    tf.app.run(main=main, argv=[sys.argv[0],
+                                '--train_steps', '1000',
+                                '--train_epochs', '1',
+                                '--train_dir', config.TEST_DATASET_PATH,
+                                '--test_dir', config.TEST_DATASET_PATH,
+                                '--model_arch', config.TEST_ARCHITECTURE_YAML,
+                                # '--notrain'
+                                ])
