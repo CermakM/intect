@@ -17,7 +17,7 @@ tf.app.flags.DEFINE_bool(
 )
 
 tf.app.flags.DEFINE_bool(
-    name='evaluate',
+    name='eval',
     default=True,
     help="Whether to evaluate the network."
 )

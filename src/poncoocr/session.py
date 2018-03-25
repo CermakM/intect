@@ -13,15 +13,28 @@ from . import utils
 EmbeddingInput = namedtuple(typename='EmbeddingInput', field_names=['x', 'labels'])
 
 
+class HookModes(object):
+
+    INIT_ONLY = 'init_only'
+    "initialize hook but do not pass into sessions args"
+
+    RUN = 'run'
+    "pass the hook to the session args for evaluations"
+
+    DEFAULT = INIT_ONLY
+    "alias for INIT_ONLY"
+
+
 class EmbeddingHook(tf.train.SessionRunHook):
     """Hook to extend calls to MonitoredSession.run()."""
 
     # noinspection SpellCheckingInspection
     def __init__(self,
                  tensors: list,
-                 batch_size=None,
+                 embedding_size=None,
                  class_dct=None,
                  logdir=None,
+                 mode=HookModes.DEFAULT,
                  every_n_steps=100):
         """Create embedding tensors.
 
@@ -39,7 +52,11 @@ class EmbeddingHook(tf.train.SessionRunHook):
         if len(tensors) != 2:
             raise ValueError('`tensors` argument expected to be of length 2, given: {}'.format(len(tensors)))
         
-        self._batch_size = batch_size
+        # mode argument is a hack for an issue with uninitialized variables and missing keys in the graph
+        # allowing to avoid interrupting checkpoints saved while training and makes possible to skip training
+        # all over
+        self.mode = mode
+        self._embedding_size = embedding_size
 
         self._class_dct = class_dct
         self._config = projector.ProjectorConfig()
@@ -58,9 +75,6 @@ class EmbeddingHook(tf.train.SessionRunHook):
         self._timer = tf.train.SecondOrStepTimer(every_steps=every_n_steps)
         self._iter_count = 0
         self._should_trigger = False
-
-        # store calculated embeddings in a list
-        self._embeddings = list()
 
         # Prototyped variables
         self._assign_op = None
@@ -87,29 +101,33 @@ class EmbeddingHook(tf.train.SessionRunHook):
         self._timer.reset()
         self._iter_count = 0
 
-        # retrieve the original tensor by its name from the graph
-        self._embedding_input = utils.as_graph_element(self._tensors.x)
-        self._embedding_labels = utils.as_graph_element(self._tensors.labels)
-
         # infer batch_size
-        if self._batch_size is None:
+        if self._embedding_size is None:
             # try to estimate it from flags
             if tf.flags.FLAGS.is_parsed():
-                self._batch_size = tf.flags.FLAGS.batch_size
+                self._embedding_size = tf.flags.FLAGS.batch_size
             else:
                 # get the default value
-                self._batch_size = tf.flags.FLAGS.flag_values_dict().get('batch_size', None)
+                self._embedding_size = tf.flags.FLAGS.flag_values_dict().get('batch_size', None)
 
-            if self._batch_size is None:
-                raise ValueError("`batch_size` could not be estimated, got %s" % type(self._batch_size))
+            if self._embedding_size is None:
+                raise ValueError("`batch_size` could not be estimated, got %s" % type(self._embedding_size))
 
         # noinspection PyUnusedLocal
         with tf.get_default_graph().as_default() as g:  # pylint: disable=unused-variable:
-            self._embedding_var = tf.Variable(tf.zeros(shape=(self._batch_size, self._embedding_input.shape[-1])),
-                                              name='embedding')
+            # retrieve the original tensor by its name from the graph
+            self._embedding_input = utils.as_graph_element(self._tensors.x)
+            self._embedding_labels = utils.as_graph_element(self._tensors.labels)
+
+            self._embedding_var = tf.Variable(
+                initial_value=tf.zeros(shape=(self._embedding_size, self._embedding_input.shape[-1])),
+                dtype=tf.float32,
+                name='embedding'
+            )
+
             self._assign_op = self._embedding_var.assign(self._embedding_input)
 
-        self._saver = tf.train.Saver([self._embedding_var])
+        self._saver = tf.train.Saver()
 
     def after_create_session(self, session, coord):  # pylint: disable=unused-argument
         """Called when new TensorFlow session is created.
@@ -150,15 +168,17 @@ class EmbeddingHook(tf.train.SessionRunHook):
 
         returns: `SessionRunArgs` object.
         """
-        self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
-
         run_args = None
-        if self._should_trigger:
-
-            run_args = tf.train.SessionRunArgs(
-                fetches=[self._assign_op, self._embedding_labels],
-            )
+        if self.mode == HookModes.INIT_ONLY:
             pass
+
+        else:
+            self._should_trigger = self._timer.should_trigger_for_step(self._iter_count)
+            if self._should_trigger:
+
+                run_args = tf.train.SessionRunArgs(
+                    fetches=[self._assign_op, self._embedding_labels],
+                )
 
         return run_args
 
@@ -180,18 +200,19 @@ class EmbeddingHook(tf.train.SessionRunHook):
           run_context: A `SessionRunContext` object.
           run_values: A SessionRunValues object.
         """
-        if self._should_trigger:
-            # add new embedddings
-            results, labels = run_values.results
+        if self.mode == HookModes.INIT_ONLY:
+            return
 
-            self._embeddings.extend(results)
+        if self._should_trigger:
+            # add new embeddings
+            results, labels = run_values.results
 
             labels = np.argmax(labels, axis=1)
             if self._class_dct:
                 labels = [chr(int(self._class_dct[label])) for label in labels]
 
             # write metadata
-            with open(self._metadata, 'a') as meta:
+            with open(self._metadata, 'w') as meta:
                 for i, label in enumerate(labels):
                     meta.write("{!s}\n".format(label))
 
@@ -220,6 +241,9 @@ class EmbeddingHook(tf.train.SessionRunHook):
         Args:
           session: A TensorFlow Session that will be soon closed.
         """
+
+        if self.mode == HookModes.INIT_ONLY:
+            return
 
         # instantiate custom saver writer
         self._writer = tf.summary.FileWriter(self._logdir, graph=tf.get_default_graph())

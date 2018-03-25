@@ -51,7 +51,9 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
 
             tf.logging.info("Training took: {time} s.".format(time=time.time() - start))
 
-        if FLAGS.evaluate:
+            estimator.train_embeddings(embedding_data=train_dataset)
+
+        if FLAGS.eval:
             evaluation = estimator.evaluate()
             print('Model evaluation after %d epochs: %s' % (FLAGS.train_epochs, evaluation))
 
@@ -71,5 +73,6 @@ if __name__ == '__main__':
                                 '--train_dir', config.TEST_DATASET_PATH,
                                 '--test_dir', config.TEST_DATASET_PATH,
                                 '--model_arch', config.TEST_ARCHITECTURE_YAML,
-                                # '--notrain'
+                                # '--notrain',
+                                '--noeval'
                                 ])
