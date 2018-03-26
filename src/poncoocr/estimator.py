@@ -1,7 +1,6 @@
 """Module containing estimator for poncoocr engine."""
 
 import os
-import shutil
 import tempfile
 import typing
 
@@ -33,7 +32,7 @@ class Estimator(object):
         self._test_data = test_data
         self._params = params or dict()
 
-        self._hooks = list()
+        self._chief_hooks = list()
 
         # create cache directory if necessary
         if not os.path.isdir(self.__model_cache_dir):
@@ -51,8 +50,8 @@ class Estimator(object):
                 os.mkdir(path=self._cache_dir)
 
         self._embedding_dir = os.path.join(self._cache_dir, 'projector')
-        # if not os.path.isdir(self._embedding_dir):
-        #     os.mkdir(self._embedding_dir)
+        if not os.path.isdir(self._embedding_dir):
+            os.mkdir(self._embedding_dir)
 
         if tf.flags.FLAGS.is_parsed():
             default_embedding_size = tf.flags.FLAGS.embedding_size
@@ -92,7 +91,7 @@ class Estimator(object):
             logdir=self._embedding_dir,
         )
 
-        self._hooks.extend([logging_hook, self._embedding_hook])
+        self._chief_hooks.extend([logging_hook])
 
         self._estimator = self._get_estimator(model_fn=model_fn)
 
@@ -123,7 +122,8 @@ class Estimator(object):
 
         assert train_data is not None, "`train_data` has not been provided."
 
-        train_hooks = self._hooks.copy()
+        train_hooks = self._chief_hooks.copy()
+        train_hooks.append(self._embedding_hook)
         train_hooks.extend(hooks or [])
 
         if steps is None:
@@ -144,45 +144,34 @@ class Estimator(object):
             hooks=train_hooks,
         )
 
-    def train_embeddings(self, embedding_data: Dataset = None):
+    def create_embeddings(self, embedding_data: Dataset = None):
         """Train the embeddings for visualizer."""
         if not embedding_data:
             embedding_data = self._train_data
 
         assert embedding_data is not None, "`embedding_data` has not been provided."
 
-        # make a copy of model_dir to preserve training checkpoints
-        try:
-            shutil.copytree(src=self._cache_dir, dst=self._embedding_dir)
-        except FileExistsError:
-            shutil.rmtree(self._embedding_dir)
-            shutil.copytree(src=self._cache_dir, dst=self._embedding_dir)
-
-        # get new estimator for embedding directory
-        embedding_estimator = self._get_estimator(
-            model_fn=self._model_fn,
-            model_dir=self._embedding_dir,
-            save_summaries=False,
-        )
-
         # allow embedding hook to run
         self._embedding_hook.mode = HookModes.RUN
 
-        embedding_estimator.train(
+        _ = self._estimator.evaluate(
             input_fn=lambda: self._dataset_input_fn(
                 dataset=embedding_data,
                 batch_size=self._embedding_size,
                 repeat=None,
                 buffer_size=self._embedding_size,
             ),
-            steps=1,  # single run
+            steps=1,
             hooks=[self._embedding_hook],
         )
+
+        # place the embedding hook to the init mode again
+        self._embedding_hook.mode = HookModes.INIT_ONLY
 
     def evaluate(self, steps=None, hooks=None) -> dict:
         """Evaluate accuracy of the estimator."""
 
-        eval_hooks = self._hooks.copy()
+        eval_hooks = self._chief_hooks.copy()
         eval_hooks.extend(hooks or [])
 
         if not self.test_data:
