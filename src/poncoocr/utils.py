@@ -10,11 +10,12 @@ import tensorflow as tf
 from collections import Counter
 from collections.abc import Mapping
 from itertools import cycle
-from math import sqrt
+from math import sqrt, ceil
 from matplotlib.pyplot import plot as plt
 from PIL import Image
 
 from src import poncoocr as pcr
+from . import config
 
 
 # FUNCTIONS
@@ -88,7 +89,7 @@ def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
 def make_sprite_image(images,
                       metadata,
                       num_images=1024,
-                      thumbnail=(32, 32),
+                      thumbnail=config.THUMBNAIL_SHAPE,
                       fill='#fff',
                       renormalize=True,
                       dir_path=None) -> tuple:
@@ -119,16 +120,16 @@ def make_sprite_image(images,
     meta_tsv = open(metadata_fp, 'w')
 
     # create white board
-    board = Image.new(mode='L', size=tuple(int(sqrt(num_images)) * np.array(thumbnail)), color=fill)
+    board = Image.new(mode='L', size=tuple(int(ceil(sqrt(num_images))) * np.array(thumbnail)), color=fill)
 
     pos = 0, 0
-    for im_index in range(num_images):
+    for im_index in range(1, num_images + 1):
         img, meta = next(iterator)
         img = img.reshape(thumbnail)
         img = Image.fromarray(img).convert('L')
         board.paste(img, pos)
 
-        if im_index and im_index % sqrt(num_images) == 0:
+        if im_index % ceil(sqrt(num_images)) == 0:
             pos = 0, pos[1] + thumbnail[1]
         else:
             pos = pos[0] + thumbnail[0], pos[1]

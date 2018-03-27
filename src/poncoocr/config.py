@@ -7,6 +7,16 @@ from src import data
 
 _data_dir = os.path.dirname(data.__file__)
 
+# shape of the thumbnail for the embedding
+THUMBNAIL_SHAPE = [32, 32]
+EMBEDDING_SIZE = 1024
+
+# set up simple object holding tensor name constants
+EMBEDDING_TENSORS = type('', (), {})
+EMBEDDING_TENSORS.BATCH_LABELS = 'batch_labels'
+EMBEDDING_TENSORS.BATCH_FEATURES = 'batch_features'
+EMBEDDING_TENSORS.EMBEDDING_INPUT = 'embedding_input'
+
 
 # Define TensorFlow app arguments
 
@@ -64,7 +74,7 @@ tf.app.flags.DEFINE_float(
 
 tf.app.flags.DEFINE_integer(
     name='embedding_size',
-    default=2048,
+    default=EMBEDDING_SIZE,
     help="Number of images passed to the embedding."
 )
 

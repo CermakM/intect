@@ -10,6 +10,7 @@ import tensorflow as tf
 from PIL import Image
 
 from .architecture import ModelArchitecture
+from .config import EMBEDDING_TENSORS, EMBEDDING_SIZE
 from .dataset import Dataset
 from .model import Model
 from .session import EmbeddingHook, HookModes
@@ -57,21 +58,9 @@ class Estimator(object):
             default_embedding_size = tf.flags.FLAGS.embedding_size
         else:
             # set an implicit value in case no other declaration found
-            default_embedding_size = min(2048, len(train_data))
+            default_embedding_size = min(EMBEDDING_SIZE, len(train_data))
 
         self._embedding_size = min(self._params.get('embedding_size', default_embedding_size), len(train_data))
-        # self._sprite, self._metadata = utils.make_sprite_image(
-        #     images=train_data.features[:self._embedding_size],
-        #     # convert labels to classes and use it as metadata
-        #     metadata=utils.label_to_class(
-        #         labels=train_data.labels[:self._embedding_size],
-        #         class_dct=train_data.classes,
-        #         decode=True,
-        #     ),
-        #     num_images=self._embedding_size,
-        #     dir_path=self._embedding_dir,
-        #     renormalize=True,
-        # )
 
         # create logging hook for training accuracy and learning rate
         logging_hook = tf.train.LoggingTensorHook(
@@ -85,7 +74,11 @@ class Estimator(object):
 
         # create embedding hook
         self._embedding_hook = EmbeddingHook(
-            tensors=['embedding_input', 'embedding_labels'],
+            tensors=[
+                EMBEDDING_TENSORS.BATCH_FEATURES,
+                EMBEDDING_TENSORS.BATCH_LABELS,
+                EMBEDDING_TENSORS.EMBEDDING_INPUT,
+            ],
             embedding_size=self._embedding_size,
             class_dct=self._train_data.classes,
             logdir=self._embedding_dir,
@@ -324,9 +317,10 @@ class Estimator(object):
             loss = tf.reduce_mean(cross_entropy)
             tf.summary.scalar('train_loss', loss)
 
-            # add to the graph an embedding tensor which will be fetched by EmbeddingHook
-            tf.identity(model.hidden_layers[-1], 'embedding_input')
-            tf.identity(model.labels, 'embedding_labels')
+            # add to the graph the tensors which will be fetched by EmbeddingHook
+            tf.identity(model.x, EMBEDDING_TENSORS.BATCH_FEATURES)
+            tf.identity(model.labels, EMBEDDING_TENSORS.BATCH_LABELS)
+            tf.identity(model.hidden_layers[-1], EMBEDDING_TENSORS.EMBEDDING_INPUT)
 
             # initialize optimizer
             optimizer = model.optimizer(learning_rate=model.learning_rate)

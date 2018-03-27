@@ -73,6 +73,9 @@ if __name__ == '__main__':
                                 # '--train_dir', config.TEST_DATASET_PATH,
                                 # '--test_dir', config.TEST_DATASET_PATH,
                                 # '--model_arch', config.TEST_ARCHITECTURE_YAML,
+                                '--train_dir', '/home/macermak/code/thesis/ponco-ocr/src/data/num-dataset/train_data',
+                                '--test_dir', '/home/macermak/code/thesis/ponco-ocr/src/data/num-dataset/test_data',
+                                '--model_arch', '/home/macermak/code/thesis/ponco-ocr/src/data/num-dataset/num-architecture.yaml',
                                 # '--notrain',
                                 # '--noeval'
                                 ])

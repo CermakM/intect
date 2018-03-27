@@ -9,8 +9,9 @@ from collections import namedtuple
 from tensorflow.contrib.tensorboard.plugins import projector
 
 from . import utils
+from . import config
 
-EmbeddingInput = namedtuple(typename='EmbeddingInput', field_names=['x', 'labels'])
+EmbeddingInput = namedtuple(typename='EmbeddingInput', field_names=['features', 'labels', 'embedding_input'])
 
 
 class HookModes(object):
@@ -31,7 +32,7 @@ class EmbeddingHook(tf.train.SessionRunHook):
     # noinspection SpellCheckingInspection
     def __init__(self,
                  tensors: list,
-                 embedding_size=None,
+                 embedding_size=config.EMBEDDING_SIZE,
                  class_dct=None,
                  logdir=None,
                  mode=HookModes.DEFAULT,
@@ -49,8 +50,8 @@ class EmbeddingHook(tf.train.SessionRunHook):
             raise TypeError('`tensors` argument expected to be of type Union[tuple, list], given: {}'
                             .format(type(tensors)))
 
-        if len(tensors) != 2:
-            raise ValueError('`tensors` argument expected to be of length 2, given: {}'.format(len(tensors)))
+        if len(tensors) != 3:
+            raise ValueError('`tensors` argument expected to be of length 3, given: {}'.format(len(tensors)))
         
         # mode argument is a hack for an issue with uninitialized variables and missing keys in the graph
         # allowing to avoid interrupting checkpoints saved while training and makes possible to skip training
@@ -60,10 +61,8 @@ class EmbeddingHook(tf.train.SessionRunHook):
 
         self._class_dct = class_dct
         self._config = projector.ProjectorConfig()
-        self._metadata = os.path.join(os.path.abspath(logdir), 'metadata.tsv')
 
         self._embedding_config = self._config.embeddings.add()
-        self._embedding_config.metadata_path = self._metadata
 
         # Set up embedding parameters
         self._tensors = EmbeddingInput(*tensors)
@@ -76,17 +75,16 @@ class EmbeddingHook(tf.train.SessionRunHook):
         self._iter_count = 0
         self._should_trigger = False
 
-        # Prototyped variables
+        # Prototyped tensors and ops
         self._assign_op = None
         self._embedding_var = None
         self._embedding_input = None
-        self._embedding_labels = None
+        self._batch_features = None
+        self._batch_labels = None
+
+        # Prototyped savers
         self._saver = None
         self._writer = None
-
-    @property
-    def embeddings(self):
-        return self._embeddings
 
     def begin(self):
         """Called once before using the session to set up embedding variable
@@ -101,23 +99,15 @@ class EmbeddingHook(tf.train.SessionRunHook):
         self._timer.reset()
         self._iter_count = 0
 
-        # infer batch_size
         if self._embedding_size is None:
-            # try to estimate it from flags
-            if tf.flags.FLAGS.is_parsed():
-                self._embedding_size = tf.flags.FLAGS.batch_size
-            else:
-                # get the default value
-                self._embedding_size = tf.flags.FLAGS.flag_values_dict().get('batch_size', None)
-
-            if self._embedding_size is None:
-                raise ValueError("`batch_size` could not be estimated, got %s" % type(self._embedding_size))
+            raise ValueError("`batch_size` could not be estimated, got %s" % type(self._embedding_size))
 
         # noinspection PyUnusedLocal
         with tf.get_default_graph().as_default() as g:  # pylint: disable=unused-variable:
             # retrieve the original tensor by its name from the graph
-            self._embedding_input = utils.as_graph_element(self._tensors.x)
-            self._embedding_labels = utils.as_graph_element(self._tensors.labels)
+            self._batch_features = utils.as_graph_element(self._tensors.features)
+            self._batch_labels = utils.as_graph_element(self._tensors.labels)
+            self._embedding_input = utils.as_graph_element(self._tensors.embedding_input)
 
             self._embedding_var = tf.Variable(
                 initial_value=tf.zeros(shape=(self._embedding_size, self._embedding_input.shape[-1])),
@@ -177,7 +167,7 @@ class EmbeddingHook(tf.train.SessionRunHook):
             if self._should_trigger:
 
                 run_args = tf.train.SessionRunArgs(
-                    fetches=[self._assign_op, self._embedding_labels],
+                    fetches=[self._batch_features, self._batch_labels, self._assign_op],
                 )
 
         return run_args
@@ -205,16 +195,24 @@ class EmbeddingHook(tf.train.SessionRunHook):
 
         if self._should_trigger:
             # add new embeddings
-            results, labels = run_values.results
-
+            features, labels, results = run_values.results
             labels = np.argmax(labels, axis=1)
             if self._class_dct:
                 labels = [chr(int(self._class_dct[label])) for label in labels]
 
-            # write metadata
-            with open(self._metadata, 'w') as meta:
-                for i, label in enumerate(labels):
-                    meta.write("{!s}\n".format(label))
+            # create the sprite image and metadata
+            sprite, metadata = utils.make_sprite_image(
+                images=features,
+                metadata=labels,
+                num_images=self._embedding_size,
+                dir_path=self._logdir,
+                renormalize=True,
+            )
+
+            self._embedding_config.metadata_path = metadata
+            self._embedding_config.sprite.image_path = sprite
+            # Specify the width and height of a single thumbnail.
+            self._embedding_config.sprite.single_image_dim.extend(config.THUMBNAIL_SHAPE)
 
             # Save the embedding
             tf.logging.info('Saving checkpoint for embeddings for global step: %d' % self._iter_count)
