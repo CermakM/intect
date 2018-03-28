@@ -7,11 +7,12 @@ import numpy as np
 import tensorflow as tf
 
 # The imports will need to be fixed to test installed version instead of the dev one
-from . import config
 from src import poncoocr as pcr
+from . import config
 
 
 class TestDirectoryIterator(unittest.TestCase):
+    """Tests for DirectoryIterator class."""
 
     def test_directory_iterator(self):
         """Test that the dataset is created properly from directory."""
@@ -41,28 +42,20 @@ class TestDirectoryIterator(unittest.TestCase):
 
 
 class TestDataset(unittest.TestCase):
+    """Tests for Dataset class."""
 
     def test_dataset_from_directory(self):
         """Test that dataset loaded successfully."""
         dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
-        self.assertIsInstance(dataset, tf.data.Dataset)
-        # dataset is not empty
-        self.assertFalse(not dataset.output_shapes)
-
-    def test_dataset_next(self):
-        """Test that dataset returns correct iterator."""
-        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
-
-        self.assertIsInstance(dataset.batch(32), tf.data.Dataset)
-
-        iterator = dataset.make_one_shot_iterator()
-        _ = iterator.get_next()
+        self.assertIsInstance(dataset, pcr.dataset.Dataset)
+        # dataset is not empty and contains features and labels
+        self.assertTrue(dataset.features.any())
+        self.assertTrue(dataset.labels.any())
 
     def test_dataset_iterator_values(self):
         """Test that the iterator produces correct shapes during tf.Session."""
         dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
-        dataset = dataset.shuffle(buffer_size=20).repeat(2).batch(5)
-        iterator = dataset.make_one_shot_iterator()
+        iterator = dataset.make_one_shot_iterator(batch_size=32)
         # iterate over the labels twice and check the shape
         with tf.Session() as sess:
             features, labels = sess.run(iterator.get_next())
@@ -71,7 +64,7 @@ class TestDataset(unittest.TestCase):
         self.assertIsNotNone(labels)
         features_shape, labels_shape = np.array(features).shape, np.array(labels).shape
 
-        # 10 test images of shape (32, 32, 3), repeated 2 -> shape (10, 2, 32, 32, 3)
-        self.assertEqual(features_shape, (10, 2, 32, 32, 3))
-        # 10 labels for the images repeated 2 times, 5 classes -> shape (10, 2, 5)
-        self.assertEqual(labels_shape, (10, 2, 5))
+        # 32 test images of shape (32, 32, 1), shape (10, 32, 32, 1)
+        self.assertEqual(features_shape, (32, 32, 32, 1))
+        # 32 labels, 2 classes, one-hot encoded -> shape (32, 2)
+        self.assertEqual(labels_shape, (32, 2))

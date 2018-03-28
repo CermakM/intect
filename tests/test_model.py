@@ -5,30 +5,41 @@ import unittest
 import tensorflow as tf
 
 # The imports will need to be fixed to test installed version instead of the dev one
-from . import config
 from src import poncoocr as pcr
+from . import config
 
 
-_dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
-_features, _labels = _dataset.make_one_shot_iterator().get_next()
+_DATASET = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
+_FEATURES, _LABELS = _DATASET.make_one_shot_iterator(batch_size=32).get_next()
 
-_features, _labels = tf.stack(_features), tf.stack(_labels)
+# wrap the features into a dict
+_FEATURES = {'x': _FEATURES}
+
+# mandatory parameters (which are usually passed by tf.app)
+PARAMS = {
+    'batch_size': 32,
+    'learning_rate': 1E-4
+}
 
 
 class TestModel(unittest.TestCase):
+    """Tests for Model class."""
 
     def test_model_init(self):
         """Test that the model is initialized properly."""
-        model = pcr.model.Model(inputs=_features, labels=_labels)
+        model = pcr.model.Model(inputs=_FEATURES, labels=_LABELS, params=PARAMS)
 
+        self.assertEqual(len(model._layers), 1)  # pylint: disable=protected-access
+
+        self.assertIsInstance(model.input_layer, tf.Tensor)
         self.assertIsInstance(model, pcr.model.Model)
 
     def test_model_for_random_names(self):
         """Test that all initialized models have random names."""
         names = set()
         # generate 5 same models and check their names differ
-        for i in range(5):
-            model = pcr.model.Model(inputs=_features, labels=_labels)
+        for _ in range(5):
+            model = pcr.model.Model(inputs=_FEATURES, labels=_LABELS, params=PARAMS)
 
             self.assertTrue(model.name not in names)
             names.add(model.name)
@@ -40,7 +51,7 @@ class TestModel(unittest.TestCase):
         arch = pcr.architecture.ModelArchitecture.from_yaml(config.TEST_ARCHITECTURE_YAML)
 
         model = pcr.model.Model.from_architecture(
-            inputs=_features, labels=_labels, arch=arch
+            inputs=_FEATURES, labels=_LABELS, arch=arch
         )
 
         self.assertIsInstance(model, pcr.model.Model)
@@ -49,8 +60,8 @@ class TestModel(unittest.TestCase):
 
     def test_model_add_conv_layer(self):
         """Test adding layer to a model."""
-        model = pcr.model.Model(inputs=_features, labels=_labels)
-        self.assertTrue(not model.hidden_layers)
+        model = pcr.model.Model(inputs=_FEATURES, labels=_LABELS, params=PARAMS)
+        self.assertEqual(len(model._layers), 1)  # pylint: disable=protected-access
         model.add_conv_layer(
             filters=16,
             kernel_size=(3, 3),
@@ -58,28 +69,29 @@ class TestModel(unittest.TestCase):
             activation=tf.nn.relu
         )
 
-        self.assertFalse(not model.hidden_layers)
-
-    def test_model_add_pool_layer(self):
-        model = pcr.model.Model(inputs=_features, labels=_labels)
-        self.assertTrue(not model.hidden_layers)
-        model.add_max_pooling_layer(
-            pool_size=(2, 2),
-            strides=2,
-        )
-
-        self.assertFalse(not model.hidden_layers)
+        self.assertEqual(len(model._layers), 2)  # pylint: disable=protected-access
 
     def test_model_add_dense_layer(self):
         """Test adding layer to a model."""
-        model = pcr.model.Model(inputs=_features, labels=_labels)
-        self.assertTrue(not model.hidden_layers)
+        model = pcr.model.Model(inputs=_FEATURES, labels=_LABELS, params=PARAMS)
+        self.assertEqual(len(model._layers), 1)  # pylint: disable=protected-access
         model.add_dense_layer(
             units=64,
             activation=tf.nn.relu,
         )
 
-        self.assertFalse(not model.hidden_layers)
+        self.assertEqual(len(model._layers), 2)  # pylint: disable=protected-access
+
+    def test_model_add_pool_layer(self):
+        """Test adding pooling layer to a model."""
+        model = pcr.model.Model(inputs=_FEATURES, labels=_LABELS, params=PARAMS)
+        self.assertEqual(len(model._layers), 1)  # pylint: disable=protected-access
+        model.add_max_pooling_layer(
+            pool_size=(2, 2),
+            strides=2,
+        )
+
+        self.assertEqual(len(model._layers), 2)  # pylint: disable=protected-access
 
     # def test_model_save(self):
     #     arch = pcr.architecture.ModelArchitecture.from_yaml(common.TEST_ARCHITECTURE_YAML)

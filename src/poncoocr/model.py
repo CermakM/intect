@@ -56,12 +56,15 @@ class Model(object):
         # Configurable and directly accessible properties
         for param, default in [('batch_size', None), ('learning_rate', None)]:
             # Make sure that flags are privileged from yaml arguments
-            value = tf.app.flags.FLAGS.get_flag_value(param, default)
+            if not tf.app.flags.FLAGS.is_parsed():
+                value = default
+            else:
+                value = tf.app.flags.FLAGS.get_flag_value(param, default)
             if value is None:
                 try:
-                    value = params.get(param)
+                    value = params[param]
                 except KeyError:
-                    raise("attribute `{}` cannot be of type {}.".format(param, type(None)))
+                    raise ValueError("attribute `{}` cannot be of type {}.".format(param, type(None)))
 
             self.__setattr__(param, tf.constant(value, tf.float32))
 

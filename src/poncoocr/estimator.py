@@ -28,6 +28,9 @@ class Estimator(object):
                  model_dir=None,
                  params: dict = None):
         """Initialize estimator parameters and create training and evaluation hooks."""
+        if all([train_data is None, test_data is None]):
+            raise ValueError("either `train_data` or `test_data` must be provided")
+
         self._arch = model_architecture
         self._train_data = train_data
         self._test_data = test_data
@@ -58,9 +61,9 @@ class Estimator(object):
             default_embedding_size = tf.flags.FLAGS.embedding_size
         else:
             # set an implicit value in case no other declaration found
-            default_embedding_size = min(EMBEDDING_SIZE, len(train_data))
+            default_embedding_size = EMBEDDING_SIZE
 
-        self._embedding_size = min(self._params.get('embedding_size', default_embedding_size), len(train_data))
+        self._embedding_size = self._params.get('embedding_size', default_embedding_size)
 
         # create logging hook for training accuracy and learning rate
         logging_hook = tf.train.LoggingTensorHook(
@@ -72,6 +75,7 @@ class Estimator(object):
             every_n_iter=100
         )
 
+        classes = getattr(self._train_data, 'classes', None) or self._test_data.classes
         # create embedding hook
         self._embedding_hook = EmbeddingHook(
             tensors=[
@@ -80,7 +84,7 @@ class Estimator(object):
                 EMBEDDING_TENSORS.EMBEDDING_INPUT,
             ],
             embedding_size=self._embedding_size,
-            class_dct=self._train_data.classes,
+            class_dct=classes,
             logdir=self._embedding_dir,
         )
 
@@ -161,20 +165,23 @@ class Estimator(object):
         # place the embedding hook to the init mode again
         self._embedding_hook.mode = HookModes.INIT_ONLY
 
-    def evaluate(self, steps=None, hooks=None) -> dict:
+    def evaluate(self, test_data: Dataset = None, steps=None, hooks=None) -> dict:
         """Evaluate accuracy of the estimator."""
 
         eval_hooks = self._chief_hooks.copy()
         eval_hooks.extend(hooks or [])
 
-        if not self.test_data:
-            raise TypeError("`test_data` has not been provided for evaluation.")
+        if not test_data:
+            test_data = self._test_data
+
+        assert test_data is not None, "`test_data` has not been provided for evaluation."
+
         results = self._estimator.evaluate(
             input_fn=lambda: self._dataset_input_fn(
-                dataset=self._test_data,
+                dataset=test_data,
                 batch_size=self._arch.batch_size,
                 repeat=1 if steps is None else None,
-                buffer_size=len(self._test_data) // 10,  # shuffle only 10% of the test data
+                buffer_size=len(test_data) // 10,  # shuffle only 10% of the test data
             ),
             steps=steps,
             hooks=eval_hooks,
@@ -188,7 +195,7 @@ class Estimator(object):
         :param path: str, path to an image or directory of images.
         """
         predictions = self._estimator.predict(
-            input_fn=self._predict_input_fn(path=path)
+            input_fn=lambda: self._predict_input_fn(path=path)
         )
 
         return predictions
@@ -231,7 +238,7 @@ class Estimator(object):
             tf_dataset = tf_dataset.shuffle(buffer_size=buffer_size or len(dataset))
 
         if batch_size:
-            tf_dataset = tf_dataset.batch(batch_size=batch_size)
+            tf_dataset = tf_dataset.batch(batch_size=batch_size or self._arch.batch_size)
 
         return tf_dataset
 
@@ -240,9 +247,7 @@ class Estimator(object):
         if os.path.isdir(path):
             dataset = Dataset.from_directory(path)
 
-            dataset = dataset.batch(self._arch.batch_size)
-
-            iterator = dataset.make_one_shot_iterator()
+            iterator = dataset.make_one_shot_iterator(repeat=1, batch_size=self._arch.batch_size)
             # Use the graph invoked by estimator._train_model
             with tf.variable_scope('predict_input'):
                 features, _ = iterator.get_next()
@@ -251,9 +256,10 @@ class Estimator(object):
             # load and normalize the array
             img_arr = np.asarray(Image.open(path, 'r').convert('L')) / 255
             img_tensor = tf.convert_to_tensor(img_arr, dtype=tf.float32)
-            img_tensor = tf.expand_dims(img_tensor, 0)
+            # expand the last dimension
+            img_tensor = tf.expand_dims(img_tensor, -1)
 
-            dataset = tf.data.Dataset.from_tensor_slices(img_tensor)
+            dataset = tf.data.Dataset.from_tensor_slices([img_tensor])
 
             iterator = dataset.batch(self._arch.batch_size).make_one_shot_iterator()
             features = iterator.get_next()

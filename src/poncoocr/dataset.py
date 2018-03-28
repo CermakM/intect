@@ -42,7 +42,6 @@ class Dataset(object):
     @classmethod
     def from_directory(cls,
                        directory: str,
-                       batch_size=1,
                        normalize=True,
                        mode='grayscale',
                        target_size=(32, 32)):
@@ -50,6 +49,7 @@ class Dataset(object):
 
         returns: `Dataset`
         """
+        batch_size = 1  # Do not load it as batches yet, let it for future configuration
         dir_iter = DirectoryIterator(directory, batch_size, target_size,
                                      normalize=normalize, mode=mode)
         features, labels = dir_iter.features, dir_iter.labels

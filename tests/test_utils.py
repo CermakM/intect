@@ -18,8 +18,10 @@ class TestUtils(unittest.TestCase):
         # test accessibility of attributes from dict
         attr_dct = pcr.utils.AttrDict(**{'default_key': 'default_value', 'dashed-key': 'dashed-value'})
 
-        self.assertTrue(attr_dct.default_key == 'default_value')
-        self.assertTrue(attr_dct.dashed_key == 'dashed-value')
+        # noinspection PyUnresolvedReferences
+        self.assertTrue(attr_dct.default_key == 'default_value')  # pylint: disable=no-member
+        # noinspection PyUnresolvedReferences
+        self.assertTrue(attr_dct.dashed_key == 'dashed-value')  # pylint: disable=no-member
 
     def test_utils_timeout_stop(self):
         """Test timeout interruption."""
@@ -40,7 +42,7 @@ class TestUtils(unittest.TestCase):
         arch = pcr.architecture.ModelArchitecture.from_yaml(config.TEST_ARCHITECTURE_YAML)
         string = pcr.utils.make_hparam_string(arch)
 
-        self.assertEqual(string, "{name},lr={lr},bs={bs},conv=2,fcl=1".format(
+        self.assertEqual(string, "{name},lr={lr},bs={bs},conv=1,fcl=1".format(
             name=arch.name,
             bs=arch.batch_size,
             lr=arch.learning_rate,

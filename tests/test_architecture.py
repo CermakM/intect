@@ -4,11 +4,12 @@ import typing
 import unittest
 
 # The imports will need to be fixed to test installed version instead of the dev one
-from . import config
 from src import poncoocr as pcr
+from . import config
 
 
 class TestArchitecture(unittest.TestCase):
+    """Tests for Architecture class"""
 
     def test_architecture_from_json(self):
         """Test architecture initialization from JSON file."""
@@ -36,7 +37,7 @@ class TestArchitecture(unittest.TestCase):
                 for v in val:
                     check(k, v)
 
-            if type(val) is dict:
+            if isinstance(val, dict):
                 for j, v in val.items():
                     check(j, v)
 
