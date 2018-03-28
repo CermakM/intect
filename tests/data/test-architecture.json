@@ -29,23 +29,6 @@
       "name": "pool"
     },
     {
-      "type": "conv2d",
-      "params": {
-        "padding": "SAME",
-        "strides": [
-          1,
-          1
-        ],
-        "activation": "relu",
-        "filters": 16,
-        "kernel_size": [
-          3,
-          3
-        ]
-      },
-      "name": "conv"
-    },
-    {
       "type": "flatten",
       "params": null,
       "name": "flat"
@@ -53,7 +36,7 @@
     {
       "type": "dense",
       "params": {
-        "units": 1024,
+        "units": 128,
         "activation": "relu"
       },
       "name": "fcl"
@@ -66,8 +49,8 @@
       "name": "logits"
     }
   ],
-  "learning_rate": 0.001,
+  "learning_rate": 0.0001,
   "optimizer": "AdamOptimizer",
-  "name": null,
-  "batch_size": 32
+  "name": "test",
+  "batch_size": 36
 }
