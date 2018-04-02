@@ -6,7 +6,7 @@ import yaml
 import names
 import typing
 
-from . import utils
+from poncoocr import utils
 
 
 class ModelArchitecture(utils.AttrDict):

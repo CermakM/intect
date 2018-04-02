@@ -6,7 +6,7 @@ import sys
 import time
 import tensorflow as tf
 
-from src import poncoocr as pcr
+import poncoocr as pcr
 
 # enable logging
 tf.logging.set_verbosity(tf.logging.INFO)

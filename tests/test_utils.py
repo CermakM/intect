@@ -6,9 +6,8 @@ import unittest
 
 import numpy as np
 
-# The imports will need to be fixed to test installed version instead of the dev one
+import poncoocr as pcr
 from . import config
-from src import poncoocr as pcr
 
 
 class TestUtils(unittest.TestCase):

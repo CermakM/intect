@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from tensorflow.python.framework import ops
 
-from . import architecture
+from poncoocr import architecture
 
 
 class Model(object):

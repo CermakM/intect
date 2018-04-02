@@ -14,8 +14,7 @@ from math import sqrt, ceil
 from matplotlib.pyplot import plot as plt
 from PIL import Image
 
-from src import poncoocr as pcr
-from . import config
+import poncoocr as pcr
 
 
 # FUNCTIONS
@@ -89,7 +88,7 @@ def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
 def make_sprite_image(images,
                       metadata,
                       num_images=1024,
-                      thumbnail=config.THUMBNAIL_SHAPE,
+                      thumbnail=pcr.config.THUMBNAIL_SHAPE,
                       fill='#fff',
                       renormalize=True,
                       dir_path=None) -> tuple:

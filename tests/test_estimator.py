@@ -4,8 +4,7 @@ import unittest
 
 import tensorflow as tf
 
-# The imports will need to be fixed to test installed version instead of the dev one
-from src import poncoocr as pcr
+import poncoocr as pcr
 from . import config
 
 

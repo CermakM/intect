@@ -1,4 +1,4 @@
-"""Module containing tools to handle data sets."""
+"""Module/home/macermak/code/thesis/ponco-ocr containing tools to handle data sets."""
 
 import typing
 
