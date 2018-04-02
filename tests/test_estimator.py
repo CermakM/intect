@@ -94,14 +94,18 @@ class TestEstimator(unittest.TestCase):
 
         estimator.train(train_data=_DATASET, steps=10),
 
-        # Test predictions from a dir of images
-        predictions = estimator.predict(path=config.TEST_DATASET_PATH)
-
-        # check that predictions is not an empty list
-        self.assertFalse(not list(predictions))
-
         # Test prediction of a single image
-        predictions = estimator.predict(path=config.TEST_IMAGE_SAMPLE)
+        predictions = estimator.predict(fp=[config.TEST_IMAGE_SAMPLE])
 
         # check that predictions is not an empty list
         self.assertFalse(not list(predictions))
+
+        # Test prediction of a list of images
+        num_samples = 5
+        predictions = estimator.predict(fp=[config.TEST_IMAGE_SAMPLE] * num_samples)
+        predictions = list(predictions)
+
+        # check that predictions is not an empty list
+        self.assertFalse(not predictions)
+        # check that each sample has corresponding prediction
+        self.assertEqual(len(predictions), num_samples)

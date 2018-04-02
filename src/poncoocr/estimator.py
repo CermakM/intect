@@ -10,7 +10,7 @@ import tensorflow as tf
 from PIL import Image
 
 from .architecture import ModelArchitecture
-from .config import EMBEDDING_TENSORS, EMBEDDING_SIZE
+from .config import EMBEDDING_TENSORS, EMBEDDING_SIZE, IMAGE_SHAPE
 from .dataset import Dataset
 from .model import Model
 from .session import EmbeddingHook, HookModes
@@ -28,8 +28,8 @@ class Estimator(object):
                  model_dir=None,
                  params: dict = None):
         """Initialize estimator parameters and create training and evaluation hooks."""
-        if all([train_data is None, test_data is None]):
-            raise ValueError("either `train_data` or `test_data` must be provided")
+        # if all([train_data is None, test_data is None]):
+        #     raise ValueError("either `train_data` or `test_data` must be provided")
 
         self._arch = model_architecture
         self._train_data = train_data
@@ -75,7 +75,11 @@ class Estimator(object):
             every_n_iter=100
         )
 
-        classes = getattr(self._train_data, 'classes', None) or self._test_data.classes
+        if any([train_data is not None, test_data is not None]):
+            classes = getattr(self._train_data, 'classes', None) or self._test_data.classes
+        else:
+            classes = None
+
         # create embedding hook
         self._embedding_hook = EmbeddingHook(
             tensors=[
@@ -189,20 +193,50 @@ class Estimator(object):
 
         return results
 
-    def predict(self, path: str) -> typing.Generator:
+    def predict(self, fp: list) -> typing.Generator:
         """Produces class predictions about either a single image or multiple images.
 
-        :param path: str, path to an image or directory of images.
+        :param fp: list containing paths to images
         """
+        # load the images from the path and normalize them
+        img_arr = np.array([np.asarray(Image.open(img_path, 'r').convert('L')) / 255
+                            for img_path in fp])
+
         predictions = self._estimator.predict(
-            input_fn=lambda: self._predict_input_fn(path=path)
+            input_fn=lambda: self._predict_input_fn(images=img_arr)
         )
 
         return predictions
 
-    def save(self):
-        """Saves the estimator for future restore and serving."""
-        raise NotImplementedError
+    def export(self, export_dir: str):
+        """Exports the estimator for future restore and serving."""
+        self._estimator.export_savedmodel(
+            export_dir_base=export_dir,
+            serving_input_receiver_fn=self._serving_input_fn,
+        )
+
+    @staticmethod
+    def _serving_input_fn():
+        """Input receiver function for serving."""
+
+        feature_spec = {
+            'x': tf.FixedLenFeature(shape=(*IMAGE_SHAPE, 1),
+                                    dtype=tf.float32)
+        }
+
+        # create tensor for serialized tf.Example
+        serialized_tf_example = tf.placeholder(dtype=tf.string, name='tf_example')
+
+        # features to be passed to the model (serialized string in this case)
+        receiver_tensors = {'x': serialized_tf_example}
+
+        # where the receiver expects to be fed by default
+        features = tf.parse_example(serialized_tf_example, feature_spec)
+
+        return tf.estimator.export.ServingInputReceiver(
+            features=features,
+            receiver_tensors=receiver_tensors
+        )
 
     def _input_fn(self, features, labels, one_hot=False, depth=None, shuffle=False, num_epochs=None) -> tuple:
         """Input function for the estimator.
@@ -227,7 +261,12 @@ class Estimator(object):
 
         return _fn()
 
-    def _dataset_input_fn(self, dataset: Dataset, repeat=None, shuffle=True, batch_size=None, buffer_size=None):
+    def _dataset_input_fn(self,
+                          dataset: Dataset,
+                          repeat=None,
+                          shuffle=True,
+                          batch_size=None,
+                          buffer_size=None) -> tf.data.Dataset:
         """Input function for the estimator.
         Loads the dataset from a directory given by `path` and returns tuple ({'x': features}, {'labels': labels)."""
         buffer_size = buffer_size or len(dataset)
@@ -242,29 +281,22 @@ class Estimator(object):
 
         return tf_dataset
 
-    def _predict_input_fn(self, path: str) -> dict:
+    def _predict_input_fn(self, images: typing.Iterable) -> tf.data.Dataset:
+        """Make predictions about each image from `images` list."""
 
-        if os.path.isdir(path):
-            dataset = Dataset.from_directory(path)
+        if not isinstance(images, typing.Iterable):
+            raise TypeError("Argument `fp` expected to be of type `{}`, got `{}`"
+                            .format(typing.Iterable, type(images)))
 
-            iterator = dataset.make_one_shot_iterator(repeat=1, batch_size=self._arch.batch_size)
-            # Use the graph invoked by estimator._train_model
-            with tf.variable_scope('predict_input'):
-                features, _ = iterator.get_next()
+        # convert to tensor
+        img_tensor = tf.convert_to_tensor(images, dtype=tf.float32)
 
-        else:
-            # load and normalize the array
-            img_arr = np.asarray(Image.open(path, 'r').convert('L')) / 255
-            img_tensor = tf.convert_to_tensor(img_arr, dtype=tf.float32)
-            # expand the last dimension
-            img_tensor = tf.expand_dims(img_tensor, -1)
+        # expand the last dimension
+        img_tensor = tf.expand_dims(img_tensor, -1)
 
-            dataset = tf.data.Dataset.from_tensor_slices([img_tensor])
+        tf_dataset = tf.data.Dataset.from_tensor_slices(dict(x=img_tensor))
 
-            iterator = dataset.batch(self._arch.batch_size).make_one_shot_iterator()
-            features = iterator.get_next()
-
-        return {'x': features}
+        return tf_dataset.batch(self._arch.batch_size)
 
     def _get_estimator(self, model_fn=None, model_dir=None, save_summaries=True):
         """Returns the estimator with the model function.
@@ -309,6 +341,9 @@ class Estimator(object):
                     'logits': logits,
                     'probabilities': y_pred,
                     'class_ids': y_pred_cls,
+                },
+                export_outputs={
+                    'predictions': tf.estimator.export.PredictOutput(y_pred)
                 }
             )
 
@@ -378,7 +413,7 @@ class Estimator(object):
                 loss=loss,
                 train_op=train_op,
                 eval_metric_ops=metrics,
-                scaffold=tf.train.Scaffold(summary_op=tf.summary.merge_all())
+                scaffold=tf.train.Scaffold(summary_op=tf.summary.merge_all()),
             )
 
         return spec

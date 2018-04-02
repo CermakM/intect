@@ -3,11 +3,13 @@
 import os
 import tensorflow as tf
 
+# noinspection PyPackageRequirements
 from src import data
 
 _data_dir = os.path.dirname(data.__file__)
 
 # shape of the thumbnail for the embedding
+IMAGE_SHAPE = [32, 32]
 THUMBNAIL_SHAPE = [32, 32]
 EMBEDDING_SIZE = 1024
 
@@ -28,7 +30,7 @@ tf.app.flags.DEFINE_bool(
 
 tf.app.flags.DEFINE_bool(
     name='eval',
-    default=True,
+    default=False,
     help="Whether to evaluate the network."
 )
 
@@ -39,8 +41,8 @@ tf.app.flags.DEFINE_bool(
          "By default architecture is expected to be in yaml format."
 )
 
-tf.app.flags.DEFINE_bool(
-    name='save',
+tf.app.flags.DEFINE_string(
+    name='export',
     default=None,
     help="Save the trained estimator. The estimator will be saved in a directory called `export/$ARCH_NAME`"
 )
@@ -51,6 +53,11 @@ tf.app.flags.DEFINE_string(
     help="Path to directory of {.yaml, .json} files containing model specifications."
 )
 
+tf.app.flags.DEFINE_list(
+    name='images',
+    default=None,
+    help="Image or comma separated list of images to be used for prediction."
+)
 
 # Define TensorFlow numeric flags
 

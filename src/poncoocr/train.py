@@ -14,11 +14,12 @@ tf.logging.set_verbosity(tf.logging.INFO)
 FLAGS = tf.app.flags.FLAGS
 
 
+# noinspection PyUnusedLocal,PyUnusedLocal
 def main(*args, **kwargs):  # pylint: disable=unused-argument
     """Function running main application logic."""
-    # Initialize datasets
-    train_dataset = pcr.dataset.Dataset.from_directory(FLAGS.train_dir)
-    test_dataset = pcr.dataset.Dataset.from_directory(FLAGS.test_dir)
+
+    if not any([FLAGS.train, FLAGS.eval, FLAGS.export]):
+        raise ValueError("Either `train`, `eval` or `export` flag must be specified.")
 
     if FLAGS.arch_dir is not None:
         architectures = list()
@@ -27,6 +28,17 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
 
     else:
         architectures = [FLAGS.model_arch]
+
+    # Initialize datasets
+    if FLAGS.train:
+        train_dataset = pcr.dataset.Dataset.from_directory(FLAGS.train_dir)
+    else:
+        train_dataset = None
+
+    if FLAGS.eval:
+        test_dataset = pcr.dataset.Dataset.from_directory(FLAGS.test_dir)
+    else:
+        test_dataset = None
 
     # Iterate over the architectures and train multiple models
     for arch_file in architectures:
@@ -43,6 +55,7 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
             model_dir=pcr.utils.make_hparam_string(arch)
         )
 
+        # Training
         if FLAGS.train:
             start = time.time()
             tf.logging.info('Training the architecture: `%s`' % arch.name)
@@ -53,15 +66,17 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
 
             estimator.create_embeddings(embedding_data=train_dataset)
 
+        # Evaluation
         if FLAGS.eval:
             evaluation = estimator.evaluate()
             print('Model evaluation after %d epochs: %s' % (FLAGS.train_epochs, evaluation))
 
-        if FLAGS.save:
-            raise NotImplementedError
-            # export_dir = "save/%s" % arch.name
-            # os.makedirs(export_dir, exist_ok=True)
-            # estimator.save()
+        # Export
+        if FLAGS.export:
+            export_dir = FLAGS.export
+            os.makedirs(export_dir, exist_ok=True)
+            # export saves the model checkpoints to the export_dir
+            estimator.export(export_dir)
 
 
 if __name__ == '__main__':
