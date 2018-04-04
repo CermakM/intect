@@ -1,3 +1,4 @@
+grpcio
 matplotlib
 names
 numpy
