@@ -53,12 +53,6 @@ tf.app.flags.DEFINE_string(
     help="Path to directory of {.yaml, .json} files containing model specifications."
 )
 
-tf.app.flags.DEFINE_list(
-    name='images',
-    default=None,
-    help="Image or comma separated list of images to be used for prediction."
-)
-
 # Define TensorFlow numeric flags
 
 tf.app.flags.DEFINE_integer(

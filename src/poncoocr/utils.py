@@ -14,7 +14,7 @@ from math import sqrt, ceil
 from matplotlib.pyplot import plot as plt
 from PIL import Image
 
-import poncoocr as pcr
+from poncoocr import config, architecture
 
 
 # FUNCTIONS
@@ -67,7 +67,7 @@ def label_to_class(labels, class_dct, one_hot=True, decode=False):
     return classes
 
 
-def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
+def make_hparam_string(arch: "architecture.ModelArchitecture") -> str:
     """Make a hyper parameter string from architecture spec.
     The string can then be used to distinguish various runs in tensorboard.
     """
@@ -88,7 +88,7 @@ def make_hparam_string(arch: "pcr.architecture.ModelArchitecture") -> str:
 def make_sprite_image(images,
                       metadata,
                       num_images=1024,
-                      thumbnail=pcr.config.THUMBNAIL_SHAPE,
+                      thumbnail=config.THUMBNAIL_SHAPE,
                       fill='#fff',
                       renormalize=True,
                       dir_path=None) -> tuple:

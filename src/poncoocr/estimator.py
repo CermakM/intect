@@ -17,6 +17,7 @@ from .session import EmbeddingHook, HookModes
 
 
 class Estimator(object):
+    """Estimator class."""
 
     __model_cache_dir = '.model_cache/'
 
@@ -27,7 +28,6 @@ class Estimator(object):
                  model_fn=None,
                  model_dir=None,
                  params: dict = None):
-        """Initialize estimator parameters and create training and evaluation hooks."""
         # if all([train_data is None, test_data is None]):
         #     raise ValueError("either `train_data` or `test_data` must be provided")
 
@@ -114,9 +114,30 @@ class Estimator(object):
     def train(self, train_data: Dataset = None, steps=None, num_epochs=1, buffer_size=None, hooks=None):
         """Train the estimator.
 
-        :param steps: number of steps to be the estimator trained for.
-        :param buffer_size: size of the buffer that is used for shuffling.
-        If `None`, buffer size is chosen according to the size of the training data.
+        :param train_data: Dataset, Dataset to be used
+
+            Dataset class or object implementing `features` and `labels` properties
+            Will be fed into the input_fn.
+
+            By default the method uses the dataset provided as `train_data` argument when
+            initializing the estimator. If specified, the argument of the `train` function
+            is privileged.
+
+        :param steps: int, number of steps to be the estimator trained for.
+        :param num_epochs: int, number of epochs to be used for training
+
+            As an epoch is by default understood a single iteration over the whole dataset.
+            If provided along with `steps` argument, the epoch will be understood as the
+            iteration over the number of steps regardless size of the dataset.
+
+        :param buffer_size: int, size of the buffer that is used for shuffling.
+
+            If `None`, buffer size is chosen according to the size of the training data.
+
+        :param hooks: list, training hooks
+
+            Hooks to be ran in MonitoredSession. Can implement fe. `begin` and `after_run`
+            methods which will be called by the session.
         """
         if not train_data:
             train_data = self._train_data
