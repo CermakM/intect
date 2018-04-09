@@ -1,5 +1,6 @@
 """Tests for estimator module."""
 
+import os
 import unittest
 
 import tensorflow as tf
@@ -7,6 +8,7 @@ import tensorflow as tf
 import poncoocr as pcr
 from . import config
 
+from tensorflow.core.framework.tensor_pb2 import TensorProto
 
 # load the dataset here so that it doesn't need to be loaded at every test
 _DATASET = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
@@ -94,17 +96,39 @@ class TestEstimator(unittest.TestCase):
         estimator.train(train_data=_DATASET, steps=10),
 
         # Test prediction of a single image
-        predictions = estimator.predict(fp=[config.TEST_IMAGE_SAMPLE])
+        image = pcr.utils.preprocess_image(config.TEST_IMAGE_SAMPLE)
+        predictions = estimator.predict(images=[image])
 
         # check that predictions is not an empty list
         self.assertFalse(not list(predictions))
 
         # Test prediction of a list of images
         num_samples = 5
-        predictions = estimator.predict(fp=[config.TEST_IMAGE_SAMPLE] * num_samples)
+
+        predictions = estimator.predict([image] * num_samples)
         predictions = list(predictions)
 
         # check that predictions is not an empty list
         self.assertFalse(not predictions)
         # check that each sample has corresponding prediction
         self.assertEqual(len(predictions), num_samples)
+        # check that all predictions are lists
+        self.assertTrue(all(isinstance(pred, dict) for pred in predictions))
+
+    def test_export_restore_class_meta(self):
+        """Test class metadata export."""
+        arch = pcr.architecture.ModelArchitecture.from_yaml(config.TEST_ARCHITECTURE_YAML)
+        estimator = pcr.estimator.Estimator(train_data=_DATASET,
+                                            model_architecture=arch)
+
+        # noinspection PyTypeChecker
+        class_meta_fp = estimator._export_tensor_proto([*estimator.classes.values()])
+
+        # check that the file has been created
+        self.assertTrue(os.path.basename(class_meta_fp) in os.listdir(estimator.model_dir))
+
+        # check that the same metadata can be restored
+        restored = estimator._tensor_from_proto(class_meta_fp)
+
+        self.assertIsNotNone(restored)
+        self.assertEqual(len(restored), len(estimator.classes))

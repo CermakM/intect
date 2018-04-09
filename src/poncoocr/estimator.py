@@ -7,13 +7,17 @@ import typing
 import numpy as np
 import tensorflow as tf
 
-from PIL import Image
+from poncoocr.architecture import ModelArchitecture
+from poncoocr.config import EMBEDDING_TENSORS, EMBEDDING_SIZE, IMAGE_SHAPE, LABEL_TENSOR_PROTO_FP
+from poncoocr.dataset import Dataset
+from poncoocr.model import Model
+from poncoocr.session import EmbeddingHook, HookModes
 
-from .architecture import ModelArchitecture
-from .config import EMBEDDING_TENSORS, EMBEDDING_SIZE, IMAGE_SHAPE
-from .dataset import Dataset
-from .model import Model
-from .session import EmbeddingHook, HookModes
+from tensorflow.core.framework.tensor_pb2 import TensorProto
+from tensorflow.contrib.lookup import index_to_string_table_from_tensor
+
+
+DEFAULT_SERVING_SIGNATURE_DEF_KEY = tf.saved_model.signature_constants.DEFAULT_SERVING_SIGNATURE_DEF_KEY
 
 
 class Estimator(object):
@@ -28,8 +32,6 @@ class Estimator(object):
                  model_fn=None,
                  model_dir=None,
                  params: dict = None):
-        # if all([train_data is None, test_data is None]):
-        #     raise ValueError("either `train_data` or `test_data` must be provided")
 
         self._arch = model_architecture
         self._train_data = train_data
@@ -75,10 +77,15 @@ class Estimator(object):
             every_n_iter=100
         )
 
+        # get the classes
         if any([train_data is not None, test_data is not None]):
             classes = getattr(self._train_data, 'classes', None) or self._test_data.classes
+
+            # transform the classes to ascii repr
+            classes = {k: chr(int(v)) for (k, v) in classes.items()}
         else:
             classes = None
+        self._classes = classes
 
         # create embedding hook
         self._embedding_hook = EmbeddingHook(
@@ -97,6 +104,10 @@ class Estimator(object):
         self._estimator = self._get_estimator(model_fn=model_fn)
 
     @property
+    def model_dir(self):
+        return self._cache_dir
+
+    @property
     def test_data(self):
         return self._test_data
 
@@ -109,7 +120,7 @@ class Estimator(object):
         if not any([self._train_data, self._test_data]):
             raise AttributeError("No data available to the Estimator, "
                                  "property `classes` cannot be accessed.")
-        return (self._train_data or self._test_data).classes
+        return self._classes
 
     def train(self, train_data: Dataset = None, steps=None, num_epochs=1, buffer_size=None, hooks=None):
         """Train the estimator.
@@ -214,50 +225,41 @@ class Estimator(object):
 
         return results
 
-    def predict(self, fp: list) -> typing.Generator:
-        """Produces class predictions about either a single image or multiple images.
+    def predict(self, images: list) -> typing.Generator:
+        """Produces class predictions about list of images given by `images`.
 
-        :param fp: list containing paths to images
+        :param images: list containing images to predict
+
+        :returns: generator yielding per-image predictions
         """
-        # load the images from the path and normalize them
-        img_arr = np.array([np.asarray(Image.open(img_path, 'r').convert('L')) / 255
-                            for img_path in fp])
+        if not isinstance(images, list):
+            raise TypeError("Expected type `list`, got `{}`".format(type(images)))
 
         predictions = self._estimator.predict(
-            input_fn=lambda: self._predict_input_fn(images=img_arr)
+            input_fn=lambda: self._predict_input_fn(images=images)
         )
 
         return predictions
 
     def export(self, export_dir: str):
-        """Exports the estimator for future restore and serving."""
-        self._estimator.export_savedmodel(
+        """Exports the estimator for future restore and serving.
+
+        :returns: path to the exported directory
+        """
+        return self._estimator.export_savedmodel(
             export_dir_base=export_dir,
-            serving_input_receiver_fn=self._serving_input_fn,
+            serving_input_receiver_fn=tf.estimator.export.build_raw_serving_input_receiver_fn(
+                features={
+                    'x': tf.placeholder(shape=(None, *IMAGE_SHAPE, 1),
+                                        dtype=tf.float32)
+                }
+            )
         )
 
     @staticmethod
     def _serving_input_fn():
         """Input receiver function for serving."""
-
-        feature_spec = {
-            'x': tf.FixedLenFeature(shape=(*IMAGE_SHAPE, 1),
-                                    dtype=tf.float32)
-        }
-
-        # create tensor for serialized tf.Example
-        serialized_tf_example = tf.placeholder(dtype=tf.string, name='tf_example')
-
-        # features to be passed to the model (serialized string in this case)
-        receiver_tensors = {'x': serialized_tf_example}
-
-        # where the receiver expects to be fed by default
-        features = tf.parse_example(serialized_tf_example, feature_spec)
-
-        return tf.estimator.export.ServingInputReceiver(
-            features=features,
-            receiver_tensors=receiver_tensors
-        )
+        raise NotImplementedError
 
     def _input_fn(self, features, labels, one_hot=False, depth=None, shuffle=False, num_epochs=None) -> tuple:
         """Input function for the estimator.
@@ -310,11 +312,9 @@ class Estimator(object):
                             .format(typing.Iterable, type(images)))
 
         # convert to tensor
-        img_tensor = tf.convert_to_tensor(images, dtype=tf.float32)
+        img_tensor = tf.convert_to_tensor(np.stack(images), dtype=tf.float32)
 
-        # expand the last dimension
-        img_tensor = tf.expand_dims(img_tensor, -1)
-
+        # create dataset
         tf_dataset = tf.data.Dataset.from_tensor_slices(dict(x=img_tensor))
 
         return tf_dataset.batch(self._arch.batch_size)
@@ -352,23 +352,54 @@ class Estimator(object):
         logits = model.logits
 
         y_pred = tf.nn.softmax(logits)
-        # get the corresponding class
         y_pred_cls = tf.argmax(y_pred, axis=1)
 
+        default_export_output = tf.estimator.export.ClassificationOutput(y_pred)
+
         if mode == tf.estimator.ModeKeys.PREDICT:
+            # restore class array from serialized tensor proto
+            label_tensor = self._tensor_from_proto(os.path.join(self._cache_dir, LABEL_TENSOR_PROTO_FP))
+
+            # create lookup table
+            lookup_cls_table = index_to_string_table_from_tensor(label_tensor)
+
+            # As a part of prediction, output top k candidates
+            if tf.flags.FLAGS.is_parsed():
+                k_candidates = tf.flags.FLAGS.k_candidates
+            else:
+                k_candidates = tf.flags.FLAGS.flag_values_dict().get('k_candidates', 5)
+
+            k_pred_scores, k_pred_classes = tf.nn.top_k(y_pred, k=k_candidates)
+
+            # cast to the matching dtype for lookup
+            k_pred_classes = tf.cast(k_pred_classes, dtype=tf.int64)
+
+            cls = lookup_cls_table.lookup(tf.to_int64(y_pred_cls))
+            classes = lookup_cls_table.lookup(tf.to_int64(k_pred_classes))
+
             spec = tf.estimator.EstimatorSpec(
                 mode=mode,
                 predictions={
-                    'logits': logits,
-                    'probabilities': y_pred,
-                    'class_ids': y_pred_cls,
+                    'classes': classes,
+                    'scores': k_pred_scores,
                 },
                 export_outputs={
-                    'predictions': tf.estimator.export.PredictOutput(y_pred)
+                    'prediction': tf.estimator.export.PredictOutput(cls),
+                    'confidence': tf.estimator.export.PredictOutput(tf.reduce_max(y_pred, axis=1)),
+                    'classes': tf.estimator.export.PredictOutput(classes),
+                    'scores': tf.estimator.export.PredictOutput(k_pred_scores),
+                    # include the default signature def as well
+                    DEFAULT_SERVING_SIGNATURE_DEF_KEY: default_export_output
                 }
             )
 
         else:
+            num_classes = len(self.classes)
+
+            # export class metadata for prediction mode
+            label_data = np.array([v for k, v in sorted(self.classes.items())], dtype=np.unicode_)
+            self._export_tensor_proto(label_data)
+
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(
                 labels=model.labels,
                 logits=y_pred
@@ -395,7 +426,6 @@ class Estimator(object):
             )
 
             # create confusion matrix
-            num_classes = len(self.classes)
             batch_confusion = tf.confusion_matrix(
                 labels=tf.argmax(model.labels, axis=1),
                 predictions=y_pred_cls,
@@ -434,7 +464,42 @@ class Estimator(object):
                 loss=loss,
                 train_op=train_op,
                 eval_metric_ops=metrics,
-                scaffold=tf.train.Scaffold(summary_op=tf.summary.merge_all()),
+                export_outputs={
+                    DEFAULT_SERVING_SIGNATURE_DEF_KEY: default_export_output
+                }
             )
 
         return spec
+
+    def _export_tensor_proto(self, tensor_data: np.ndarray):
+        """Serialize and export metadata to a file as a tensor proto.
+
+        The exported file will be placed into the `model_dir` as <fname>.proto (by default label_meta.proto)
+        """
+        fp = os.path.join(self._cache_dir, LABEL_TENSOR_PROTO_FP)
+
+        with open(fp, 'wb') as meta:
+            # create tensor proto
+            meta.write(tf.make_tensor_proto(tensor_data).SerializeToString())
+
+        return fp
+
+    @staticmethod
+    def _tensor_from_proto(fp) -> np.ndarray:
+        """Restores tensor from .proto` file.
+
+        :param fp: str, path to  .proto file
+        :returns: ndarray of tensor content
+        """
+
+        with open(fp, 'rb') as proto_file:
+            serialized_tensor_proto = proto_file.read()
+
+        # convert to TensorProto
+        tensor_proto = TensorProto.FromString(serialized_tensor_proto)
+
+        return tf.make_ndarray(tensor_proto)
+
+
+
+

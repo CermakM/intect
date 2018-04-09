@@ -62,7 +62,7 @@ class TestUtils(unittest.TestCase):
 
     def test_label_to_class(self):
         dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
-        classes = pcr.utils.label_to_class(
+        classes = pcr.utils.convert_labels_to_classes(
             labels=dataset.labels,
             class_dct=dataset.classes
         )

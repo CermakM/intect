@@ -2,7 +2,6 @@
 
 import os
 import re
-import sys
 import time
 import tensorflow as tf
 
@@ -10,6 +9,58 @@ import poncoocr as pcr
 
 # enable logging
 tf.logging.set_verbosity(tf.logging.INFO)
+
+# Define some TensorFlow app arguments
+
+tf.app.flags.DEFINE_string(
+    name='arch_dir',
+    default=None,
+    help="Path to directory of {.yaml, .json} files containing model specifications."
+)
+
+tf.app.flags.DEFINE_bool(
+    name='train',
+    default=True,
+    help="Whether to train the network."
+)
+
+tf.app.flags.DEFINE_bool(
+    name='eval',
+    default=False,
+    help="Whether to evaluate the network."
+)
+
+tf.app.flags.DEFINE_bool(
+    name='export',
+    default=False,
+    help="Save the trained estimator. The estimator will be saved in a directory specified by --export_dir"
+)
+
+tf.app.flags.DEFINE_string(
+    name='export_dir',
+    default='export',
+    help="Specify the directory for export."
+)
+
+tf.app.flags.DEFINE_bool(
+    name='json',
+    default=None,
+    help="Whether to use the JSON parser to parse the model architecture file."
+         "By default architecture is expected to be in yaml format."
+)
+
+tf.app.flags.DEFINE_integer(
+    name='train_epochs',
+    default=10,
+    help="Number of training epochs. This means the number of times the set is iterated over."
+)
+
+
+tf.app.flags.DEFINE_integer(
+    name='train_steps',
+    default=None,
+    help="Number of training steps. This means the number of batches that is the model being trained on."
+)
 
 FLAGS = tf.app.flags.FLAGS
 
@@ -28,6 +79,9 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
 
     else:
         architectures = [FLAGS.model_arch]
+
+    # sanity check
+    assert len(architectures) > 0, "Architecture was not provided."
 
     # Initialize datasets
     if FLAGS.train:
@@ -73,14 +127,13 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
 
         # Export
         if FLAGS.export:
-            export_dir = FLAGS.export
+            export_dir = FLAGS.export_dir
             os.makedirs(export_dir, exist_ok=True)
             # export saves the model checkpoints to the export_dir
-            estimator.export(export_dir)
+            exported = estimator.export(export_dir)
+            print('Model has been exported to `%s`' % exported)
 
 
 if __name__ == '__main__':
 
-    tf.app.run(main=main, argv=[
-        sys.argv[0],
-    ])
+    tf.app.run(main=main)

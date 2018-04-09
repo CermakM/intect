@@ -198,7 +198,7 @@ class EmbeddingHook(tf.train.SessionRunHook):
             features, labels, results = run_values.results
             labels = np.argmax(labels, axis=1)
             if self._class_dct:
-                labels = [chr(int(self._class_dct[label])) for label in labels]
+                labels = [self._class_dct[label] for label in labels]
 
             # create the sprite image and metadata
             sprite, metadata = utils.make_sprite_image(

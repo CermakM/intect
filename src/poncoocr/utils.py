@@ -7,6 +7,8 @@ import threading
 import numpy as np
 import tensorflow as tf
 
+from scipy import misc
+
 from collections import Counter
 from collections.abc import Mapping
 from itertools import cycle
@@ -18,6 +20,22 @@ from poncoocr import config, architecture
 
 
 # FUNCTIONS
+
+def preprocess_image(image_file: str):
+    """Pre-process the input to match the input expected by the serving.
+
+    ":returns: ndarray, preprocessed image
+    """
+    image = misc.imread(image_file, mode='L')
+    # resize the image to desired format
+    image = misc.imresize(image, size=config.IMAGE_SHAPE)
+    # normalize the image
+    image = image.astype(dtype=np.float32) / 255
+    # expand the dimension
+    image = np.expand_dims(image, axis=-1)
+
+    return image
+
 
 def as_graph_element(obj):
     """Retrieves Graph element."""
@@ -43,7 +61,7 @@ def as_graph_element(obj):
     return element
 
 
-def label_to_class(labels, class_dct, one_hot=True, decode=False):
+def convert_labels_to_classes(labels, class_dct, one_hot=True, decode=False):
     """Convert a tensor of labels into a tensor of classes given a class dict.
 
     :param labels: np.array or iterable of labels
@@ -53,16 +71,20 @@ def label_to_class(labels, class_dct, one_hot=True, decode=False):
 
     :returns: tensor of the shape (len_labels,) of classed labels
     """
-    # TODO: handle TensorFlow tensors as well
     if one_hot:
         labels = np.argmax(labels, axis=1)
 
+    if not isinstance(labels, np.ndarray):
+        labels = np.array([*labels], dtype=np.uint8)
+
     # labels are unicode representation of a letter, if `decode` is specified, return
     # the decoded character
-    if decode:
-        classes = np.array([chr(int(class_dct[label])) for label in labels], dtype=np.unicode_)
-    else:
-        classes = np.array([class_dct[label] for label in labels], dtype=np.unicode_)
+    classes = np.empty(shape=labels.shape, dtype=np.unicode_)
+    for idx in np.ndindex(labels.shape):
+        if decode:
+            classes[idx] = chr(int(class_dct[labels[idx]]))
+        else:
+            classes[idx] = class_dct[labels[idx]]
 
     return classes
 

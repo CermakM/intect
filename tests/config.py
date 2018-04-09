@@ -4,7 +4,7 @@ import os
 import tempfile
 
 
-TEST_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data')
+TEST_DATA_PATH = os.path.join(os.path.dirname(__file__), 'data/')
 TEST_DATASET_PATH = os.path.join(TEST_DATA_PATH, 'test_data/')
 
 TEST_IMAGE_SAMPLE = os.path.join(TEST_DATA_PATH, 'default.png')

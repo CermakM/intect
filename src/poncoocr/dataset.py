@@ -87,7 +87,7 @@ class DirectoryIterator:
             directory=directory,
             color_mode=mode,
             batch_size=batch_size,
-            target_size=target_size
+            target_size=target_size,
         )
 
         # Keras by default stores class_indices as {[str]class: [int]index} dict,
