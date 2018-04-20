@@ -1,8 +1,6 @@
 grpcio
-matplotlib
-names
-numpy
-pillow
-pyyaml
-scipy
 tensorflow
+names
+pyyaml
+matplotlib
+pillow
