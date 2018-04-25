@@ -1,7 +1,9 @@
 """Main module encapsulating poncoocr logic."""
 
+import json
 import os
 import re
+import sys
 import time
 import tensorflow as tf
 
@@ -11,16 +13,20 @@ import poncoocr as pcr
 tf.logging.set_verbosity(tf.logging.INFO)
 
 # Define some TensorFlow app arguments
+tf.app.flags.DEFINE_bool(
+    name='help',
+    default=None,
+    help="Display help and exit."
+)
 
 tf.app.flags.DEFINE_string(
     name='arch_dir',
     default=None,
     help="Path to directory of {.yaml, .json} files containing model specifications."
 )
-
 tf.app.flags.DEFINE_bool(
     name='train',
-    default=True,
+    default=False,
     help="Whether to train the network."
 )
 
@@ -28,6 +34,18 @@ tf.app.flags.DEFINE_bool(
     name='eval',
     default=False,
     help="Whether to evaluate the network."
+)
+
+tf.app.flags.DEFINE_bool(
+    name='predict',
+    default=False,
+    help="Make predictions using a pre-trained estimator."
+)
+
+tf.app.flags.DEFINE_list(
+    name='images',
+    default=None,
+    help="Image or comma separated list of images."
 )
 
 tf.app.flags.DEFINE_bool(
@@ -68,9 +86,29 @@ FLAGS = tf.app.flags.FLAGS
 # noinspection PyUnusedLocal,PyUnusedLocal
 def main(*args, **kwargs):  # pylint: disable=unused-argument
     """Function running main application logic."""
+    if FLAGS.help:
+        print(FLAGS.get_help())
+        exit(0)
 
-    if not any([FLAGS.train, FLAGS.eval, FLAGS.export]):
-        raise ValueError("Either `train`, `eval` or `export` flag must be specified.")
+    if not any([FLAGS.train, FLAGS.eval, FLAGS.export, FLAGS.predict]):
+        print("Either `train`, `eval`, `predict` or `export` flag must be specified.", file=sys.stderr)
+        print(FLAGS.get_help())
+        exit(1)
+
+    # perform checks for predictions
+    if FLAGS.predict:
+        if not FLAGS.model_dir:
+            print("`--model_dir` argument required", file=sys.stderr)
+            print(FLAGS.get_help())
+            exit(1)
+        if not FLAGS.images:
+            print("`--images` argument required", file=sys.stderr)
+            print(FLAGS.get_help())
+            exit(1)
+        if any([FLAGS.train, FLAGS.eval]):
+            print("`--train` or `--eval` can not be used with `--predict`", file=sys.stderr)
+            print(FLAGS.get_help())
+            exit(1)
 
     if FLAGS.arch_dir is not None:
         architectures = list()
@@ -106,8 +144,17 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
             model_architecture=arch,
             train_data=train_dataset,
             test_data=test_dataset,
-            model_dir=pcr.utils.make_hparam_string(arch)
+            model_dir=FLAGS.model_dir or pcr.utils.make_hparam_string(arch)
         )
+
+        if FLAGS.predict:
+            images = [
+                pcr.utils.preprocess_image(image_file=img_file)
+                for img_file in FLAGS.images
+            ]
+
+            predictions = list(estimator.predict(images=images))
+            print(json.dumps(predictions, indent=4))
 
         # Training
         if FLAGS.train:

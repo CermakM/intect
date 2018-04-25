@@ -352,7 +352,7 @@ class Estimator(object):
         logits = model.logits
 
         y_pred = tf.nn.softmax(logits)
-        y_pred_cls = tf.argmax(y_pred, axis=1)
+        y_pred_score, y_pred_cls = tf.nn.top_k(y_pred)
 
         default_export_output = tf.estimator.export.ClassificationOutput(y_pred)
 
@@ -363,31 +363,26 @@ class Estimator(object):
             # create lookup table
             lookup_cls_table = index_to_string_table_from_tensor(label_tensor)
 
-            # As a part of prediction, output top k candidates
-            if tf.flags.FLAGS.is_parsed():
-                k_candidates = tf.flags.FLAGS.k_candidates
-            else:
-                k_candidates = tf.flags.FLAGS.flag_values_dict().get('k_candidates', 5)
-
-            k_pred_scores, k_pred_classes = tf.nn.top_k(y_pred, k=k_candidates)
+            # take all of the classes
+            pred_scores, pred_classes = tf.nn.top_k(y_pred, k=len(y_pred))
 
             # cast to the matching dtype for lookup
-            k_pred_classes = tf.cast(k_pred_classes, dtype=tf.int64)
+            pred_classes = tf.cast(pred_classes, dtype=tf.int64)
 
             cls = lookup_cls_table.lookup(tf.to_int64(y_pred_cls))
-            classes = lookup_cls_table.lookup(tf.to_int64(k_pred_classes))
+            classes = lookup_cls_table.lookup(tf.to_int64(pred_classes))
 
             spec = tf.estimator.EstimatorSpec(
                 mode=mode,
                 predictions={
-                    'classes': classes,
-                    'scores': k_pred_scores,
+                    'cls': cls,
+                    'score': y_pred_score,
                 },
                 export_outputs={
                     'prediction': tf.estimator.export.PredictOutput(cls),
                     'confidence': tf.estimator.export.PredictOutput(tf.reduce_max(y_pred, axis=1)),
                     'classes': tf.estimator.export.PredictOutput(classes),
-                    'scores': tf.estimator.export.PredictOutput(k_pred_scores),
+                    'scores': tf.estimator.export.PredictOutput(pred_scores),
                     # include the default signature def as well
                     DEFAULT_SERVING_SIGNATURE_DEF_KEY: default_export_output
                 }

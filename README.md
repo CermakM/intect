@@ -10,7 +10,7 @@ The text recognition is done via a convolutional neural network (CNN).
 The architecture of the CNN is to a significant extant customizable
 by writing a `.yaml` specification.
 
-Examples of such specification can be found in the [model](src/data/model)
+Examples of such specification can be found in the [model](src/data/architectures)
 directory.
 
 
@@ -54,5 +54,3 @@ used for data generation.
 
 
 2) ###### Run the training
-
-In order to train the network, we'll make use of the  [train.py](src/poncoocr/train.py).

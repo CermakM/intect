@@ -21,6 +21,12 @@ from poncoocr.utils import preprocess_image
 
 FLAGS = tf.app.flags.FLAGS
 
+tf.app.flags.DEFINE_bool(
+    name='help',
+    default=None,
+    help="Display help and exit."
+)
+
 # set up __parser
 tf.app.flags.DEFINE_string(
     name='host',
@@ -79,6 +85,10 @@ def _format_error_msg(rc_name, r_detail, request):
 
 # noinspection PyUnusedLocal
 def main(*args, **kwargs):  # pylint: disable=unused-argument
+    if FLAGS.help:
+        print(FLAGS.get_help())
+        sys.exit(0)
+
     if FLAGS.images is None:
         print("`--images` parameter not proved", file=sys.stderr)
         sys.exit(1)

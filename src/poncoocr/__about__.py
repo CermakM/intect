@@ -4,7 +4,7 @@ __all__ = [
 ]
 
 __title__ = "poncoocr"
-__summary__ = "poncoocr is a position-preserving text recognition engine."
+__summary__ = "Neural network architect."
 __uri__ = "https://github.com/CermakM/ponco-ocr"
 
 __version__ = "0.1.5"

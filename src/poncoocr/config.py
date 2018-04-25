@@ -4,9 +4,8 @@ import os
 import tensorflow as tf
 
 # noinspection PyPackageRequirements
-from src import data
 
-_data_dir = os.path.dirname(data.__file__)
+_data_dir = os.path.join(os.path.dirname(__file__), 'data')
 
 # shape of the thumbnail for the embedding
 IMAGE_SHAPE = [32, 32]
@@ -23,13 +22,6 @@ LABEL_TENSOR_PROTO_FP = 'label_meta.proto'
 
 
 # Define TensorFlow numeric flags
-
-tf.app.flags.DEFINE_integer(
-    name='k_candidates',
-    default=5,
-    help="Number of candidate classes to predict."
-)
-
 
 tf.app.flags.DEFINE_integer(
     name='batch_size',
@@ -53,24 +45,24 @@ tf.app.flags.DEFINE_integer(
 
 tf.app.flags.DEFINE_string(
     name='test_dir',
-    default=os.path.join(_data_dir, 'char-dataset/test_data'),
+    default=None,
     help="Path to the directory storing test data."
 )
 
 tf.app.flags.DEFINE_string(
     name='train_dir',
-    default=os.path.join(_data_dir, 'char-dataset/train_data'),
+    default=None,
     help="Path to the directory storing train data."
 )
 
 tf.app.flags.DEFINE_string(
-    name='model_arch',
-    default=os.path.join(_data_dir, 'model/default-architecture.yaml'),
-    help="Path to the directory storing model architecture."
+    name='model_dir',
+    default=None,
+    help="Directory used to store trained model (required with --predict)."
 )
 
 tf.app.flags.DEFINE_string(
-    name='sprite_dir',
-    default=os.path.join(_data_dir, 'sprites/'),
-    help="Path to the directory storing data sprites and their metadata."
+    name='model_arch',
+    default=os.path.join(_data_dir, 'architectures/default-architecture.yaml'),
+    help="Path to the directory storing model architecture."
 )

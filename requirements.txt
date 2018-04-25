@@ -1,6 +1,8 @@
-grpcio
-tensorflow
 names
 pyyaml
 matplotlib
+numpy
+scipy
 pillow
+scikit-image
+tensorflow

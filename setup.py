@@ -28,7 +28,10 @@ setup(
     license=ABOUT['__license__'],
 
     description=ABOUT['__summary__'],
-    long_description="",  # TODO
+    long_description="The architect allows to build, train and export servable neural network."
+                     " Using single YAML file it is possible to fully define an architecture of"
+                     " a neural network. The NN can then be trained, exported and served using"
+                     " provided API.",
 
     classifiers=[
         "Development Status :: 1 - Planning"
@@ -40,11 +43,20 @@ setup(
         "License :: OSI Approved :: GNU General Public License v3 (GPLv3)"
     ],
 
-    package_dir={"": "src"},
+    package_data={
+        'poncoocr': ['src/data/models', 'src/data/architectures']
+    },
+    include_package_data=True,
+
+    package_dir={'': 'src'},
     packages=find_packages(where='src'),
 
+    entry_points={
+        'console_scripts': [
+            'intect = poncoocr.api:main',
+            'intect-client = poncoocr.serving.client:main'
+        ],
+    },
+
     install_requires=REQUIREMENTS,
-    tests_require=[
-       # TODO
-    ],
 )
