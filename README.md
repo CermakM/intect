@@ -14,7 +14,7 @@ Examples of such specification can be found in the [model](src/data/architecture
 directory.
 
 
-#### Training
+#### Deployment
 
 In order to train the neural network with the given architecture,
 a few things have to be done first.
@@ -53,4 +53,34 @@ The generator generates data suitable for this purpose. Feel free to experiment 
 used for data generation.
 
 
-2) ###### Run the training
+2) ###### Minimum Deployment
+
+As a `minimum` it is refered to a deployment of the application itself, that is without client.
+It is useful for training and evaluation. It is also possible to get a simple prediction, but for that we should deploy
+a dedicated server (more on that bellow).
+
+The application is shipped in [docker](https://www.docker.com/).
+Make sure you have it docker installed and properly set up.
+
+From the main directory, run the following command to build the image.
+
+```bash
+docker build -t $IMAGE_NAME .
+```
+
+*NOTE: Replace the `$IMAGE_NAME` with your custom value.*
+
+Then execute one of the following commands to run the container.
+(see [docker](https://ww.docker.com/) help for more info about running a container)
+
+```bash
+docker run -dit -p 6006:6006 --name $CONTAINER_NAME $IMAGE_NAME
+```
+
+*NOTE: Replace the `$CONTANER_NAME` with your custom value.*
+
+or you can bind-mount the working directory, for example to provide training data easily
+
+```bash
+docker run -dit -p 6006:6006 -v ${PWD}:/code --name $CONTAINER_NAME $IMAGE_NAME
+```

@@ -64,28 +64,24 @@ RUN mkdir /bazel && \
 # ---
 
 RUN git clone --recurse-submodules https://github.com/tensorflow/serving
-cd serving
+RUN cd serving && bazel build -c opt tensorflow_serving/...
 
-RUN bazel build -c opt tensorflow_serving/...
-RUN ln -s bazel-bin/tensorflow_serving/model_servers/tensorflow_model_server /bin/tensorflow_model_server
+RUN ln -s /serving/bazel-bin/tensorflow_serving/model_servers/tensorflow_model_server /bin/tensorflow_model_server
 
 
 # ---
 # Install protoc
 # ---
 
-#! /bin/bash
-wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz
-tar xzf protobuf-2.6.1.tar.gz
-cd protobuf-2.6.1
-sudo apt-get update
-sudo apt-get install build-essential
-sudo ./configure
-sudo make
-sudo make check
-sudo make install
-sudo ldconfig
-protoc --version
+RUN wget https://github.com/google/protobuf/releases/download/v2.6.1/protobuf-2.6.1.tar.gz && \
+    tar xzf protobuf-2.6.1.tar.gz && \
+    cd protobuf-2.6.1 && \
+    apt-get update && apt-get install build-essential && \
+    ./configure && \
+    make && make check && make install && \
+    ldconfig
+
+RUN protoc --verision
 
 
 # ---
