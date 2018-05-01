@@ -1,0 +1,19 @@
+version: '3'
+
+services:
+    intect-minimal:
+        build:
+            context: .
+            dockerfile: Dockerfile.min
+        ports:
+            - "6006:6006"
+        volumes:
+            - .:/code
+    intect-client:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        ports:
+            - "9000:9000"
+        volumes:
+            - .:/code

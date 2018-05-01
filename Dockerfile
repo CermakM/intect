@@ -1,17 +1,51 @@
 FROM python:3.6-jessie
 
-# Dockerfile for deploying a minimum TensorFlow application without client service.
-# Such deployment is useful for training and evaluation of the neural network.
+# Dockerfile for TensorFlow Serving deployment.
+
+# ---
+# Environment
+# ---
+ENV PROJECT poncoocr
+
+ENV CODE_DIR /code
+ENV ARCH_DIR ${CODE_DIR}/src/data/architectures
+ENV API_DIR ${CODE_DIR}/src/${PROJECT}/api
+
+ENV SAVED_MODEL_DIR ${CODE_DIR}/src/data/models
+ENV SERVER_CONFIG ${API_DIR}/server.conf
+
+ENV CLIENT ${API_DIR}/client.py
+
+# ---
+# Project
+# ---
 
 ADD . /code
 WORKDIR /code
 
+ADD . /code
+
 RUN pip install -r requirements.txt
 RUN python setup.py install
 
-RUN tensorboard --logdir=/code/.model_cache &
 
-# TensorBoard
-EXPOSE 6006
+# ---
+# Tensorflow Serving
+# ---
+RUN apt-get -y update && apt-get -y install curl
+RUN echo "deb [arch=amd64] http://storage.googleapis.com/tensorflow-serving-apt stable tensorflow-model-server tensorflow-model-server-universal" >> /etc/apt/sources.list.d/tensorflow-serving.list
 
-ENTRYPOINT ['/bin/bash']
+RUN curl https://storage.googleapis.com/tensorflow-serving-apt/tensorflow-serving.release.pub.gpg | apt-key add -
+RUN apt-get -y update && \
+    apt-get -y install tensorflow-model-server && \
+    apt-get -y upgrade tensorflow-model-server
+
+# ---
+# Model server
+# ---
+EXPOSE 9000
+RUN tensorflow_model_server --model_config_file=${SERVER_CONFIG} --port 9000 &> server.log &
+
+
+ENTRYPOINT ["$CLIENT"]
+CMD ["--help"]

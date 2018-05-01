@@ -1,0 +1,13 @@
+build/
+dist/
+
+env/
+venv/
+
+assets/
+
+**/__pycache__/
+
+**/data/
+!**/data/models/
+!**/data/architectures/

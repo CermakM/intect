@@ -1,0 +1,32 @@
+FROM python:3.6-jessie
+
+# Dockerfile for deploying a minimum TensorFlow application without client service.
+# Such deployment is useful for training and evaluation of the neural network.
+#
+# ---
+# Environment
+# ---
+ENV PROJECT poncoocr
+
+ENV CODE_DIR /code
+ENV API_DIR ${CODE_DIR}/src/${PROJECT}/api
+
+ENV CLI ${API_DIR}/cli.py
+
+ADD . /code
+WORKDIR /code
+
+# ---
+# Project
+# ---
+
+RUN pip install -r requirements.txt
+RUN python setup.py install
+
+# TensorBoard
+EXPOSE 6006
+
+RUN tensorboard --logdir=/code/.model_cache &
+
+ENTRYPOINT ["$CLI"]
+CMD ["--help"]
