@@ -6,7 +6,7 @@ import unittest
 
 import numpy as np
 
-import poncoocr as pcr
+import intect
 from . import config
 
 
@@ -15,7 +15,7 @@ class TestUtils(unittest.TestCase):
     def test_utils_attribute_dict(self):
         """Test AttrDict."""
         # test accessibility of attributes from dict
-        attr_dct = pcr.utils.AttrDict(**{'default_key': 'default_value', 'dashed-key': 'dashed-value'})
+        attr_dct = intect.utils.AttrDict(**{'default_key': 'default_value', 'dashed-key': 'dashed-value'})
 
         # noinspection PyUnresolvedReferences
         self.assertTrue(attr_dct.default_key == 'default_value')  # pylint: disable=no-member
@@ -25,7 +25,7 @@ class TestUtils(unittest.TestCase):
     def test_utils_timeout_stop(self):
         """Test timeout interruption."""
         timeout = 2
-        thread = pcr.utils.Timeout(timeout=2, thread_id=1, name='test-deadline')
+        thread = intect.utils.Timeout(timeout=2, thread_id=1, name='test-deadline')
         thread.start()
 
         self.assertTrue(thread.is_alive())
@@ -38,8 +38,8 @@ class TestUtils(unittest.TestCase):
     def test_make_hparam_string(self):
         """Test hyper parameter string creation from architecture spec."""
 
-        arch = pcr.architecture.ModelArchitecture.from_yaml(config.TEST_ARCHITECTURE_YAML)
-        string = pcr.utils.make_hparam_string(arch)
+        arch = intect.architecture.ModelArchitecture.from_yaml(config.TEST_ARCHITECTURE_YAML)
+        string = intect.utils.make_hparam_string(arch)
 
         self.assertEqual(string, "{name},lr={lr},bs={bs},conv=1,fcl=1".format(
             name=arch.name,
@@ -48,10 +48,10 @@ class TestUtils(unittest.TestCase):
         ))
 
     def test_make_sprite_image(self):
-        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
+        dataset = intect.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
         features, labels = dataset.features, np.argmax(dataset.labels, axis=1)
 
-        sprite, meta = pcr.utils.make_sprite_image(
+        sprite, meta = intect.utils.make_sprite_image(
             images=features, metadata=labels, num_images=100, dir_path=config.TEST_LOGDIR)
 
         # check that sprite.png and metadata.tsv have been created
@@ -61,8 +61,8 @@ class TestUtils(unittest.TestCase):
         self.assertTrue(os.path.basename(meta) in files)
 
     def test_label_to_class(self):
-        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
-        classes = pcr.utils.convert_labels_to_classes(
+        dataset = intect.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
+        classes = intect.utils.convert_labels_to_classes(
             labels=dataset.labels,
             class_dct=dataset.classes
         )

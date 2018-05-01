@@ -16,7 +16,7 @@ from math import sqrt, ceil
 from matplotlib.pyplot import plot as plt
 from PIL import Image
 
-from poncoocr import config, architecture
+from intect import config, architecture
 
 
 # FUNCTIONS

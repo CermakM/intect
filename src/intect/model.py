@@ -1,4 +1,4 @@
-"""Module containing model of convolutional neural network for the poncoocr engine."""
+"""Module containing model of convolutional neural network for the intect engine."""
 
 import typing
 
@@ -7,7 +7,7 @@ import tensorflow as tf
 
 from tensorflow.python.framework import ops
 
-from poncoocr import architecture
+from intect import architecture
 
 
 class Model(object):

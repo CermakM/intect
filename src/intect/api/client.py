@@ -17,7 +17,7 @@ from tensorflow_serving.apis import predict_pb2
 from tensorflow_serving.apis import prediction_service_pb2_grpc
 from tensorflow.contrib.util import make_tensor_proto
 
-from poncoocr.utils import preprocess_image
+from intect.utils import preprocess_image
 
 FLAGS = tf.app.flags.FLAGS
 

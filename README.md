@@ -1,6 +1,6 @@
-# ponco-ocr
+# intect
 
-### Text recognition engine
+### Neural network architect
 
 <br>
 

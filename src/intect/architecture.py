@@ -6,7 +6,7 @@ import yaml
 import names
 import typing
 
-from poncoocr import utils
+from intect import utils
 
 
 class ModelArchitecture(utils.AttrDict):
@@ -94,6 +94,6 @@ class ModelArchitecture(utils.AttrDict):
             f.write(yaml.safe_dump(self.to_dict()))
 
     def describe(self):
-        return "<class 'poncoocr.architecture.ModelArchitecture'" \
+        return "<class 'intect.architecture.ModelArchitecture'" \
                "  name: '{s.name}'" \
                "  layers: {s.layers}>".format(s=self)

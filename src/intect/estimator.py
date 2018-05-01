@@ -1,4 +1,4 @@
-"""Module containing estimator for poncoocr engine."""
+"""Module containing estimator for intect engine."""
 
 import os
 import tempfile
@@ -7,11 +7,11 @@ import typing
 import numpy as np
 import tensorflow as tf
 
-from poncoocr.architecture import ModelArchitecture
-from poncoocr.config import EMBEDDING_TENSORS, EMBEDDING_SIZE, IMAGE_SHAPE, LABEL_TENSOR_PROTO_FP
-from poncoocr.dataset import Dataset
-from poncoocr.model import Model
-from poncoocr.session import EmbeddingHook, HookModes
+from intect.architecture import ModelArchitecture
+from intect.config import EMBEDDING_TENSORS, EMBEDDING_SIZE, IMAGE_SHAPE, LABEL_TENSOR_PROTO_FP
+from intect.dataset import Dataset
+from intect.model import Model
+from intect.session import EmbeddingHook, HookModes
 
 from tensorflow.core.framework.tensor_pb2 import TensorProto
 from tensorflow.contrib.lookup import index_to_string_table_from_tensor
@@ -364,7 +364,7 @@ class Estimator(object):
             lookup_cls_table = index_to_string_table_from_tensor(label_tensor)
 
             # take all of the classes
-            pred_scores, pred_classes = tf.nn.top_k(y_pred, k=len(y_pred))
+            pred_scores, pred_classes = tf.nn.top_k(y_pred, k=len(label_tensor))
 
             # cast to the matching dtype for lookup
             pred_classes = tf.cast(pred_classes, dtype=tf.int64)
@@ -494,7 +494,3 @@ class Estimator(object):
         tensor_proto = TensorProto.FromString(serialized_tensor_proto)
 
         return tf.make_ndarray(tensor_proto)
-
-
-
-

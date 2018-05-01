@@ -11,7 +11,7 @@ SRC_DIR = os.path.join(BASE_DIR, "src")
 sys.path.insert(0, SRC_DIR)
 
 ABOUT = dict()
-with open(os.path.join(SRC_DIR, 'poncoocr', '__about__.py')) as f:
+with open(os.path.join(SRC_DIR, 'intect', '__about__.py')) as f:
     exec(f.read(), ABOUT)
 
 with open('requirements.txt') as f:
@@ -44,7 +44,7 @@ setup(
     ],
 
     package_data={
-        'poncoocr': ['src/data/models', 'src/data/architectures']
+        'intect': ['src/data/models', 'src/data/architectures']
     },
     include_package_data=True,
 
@@ -53,8 +53,8 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'intect = poncoocr.api.cli:main',
-            'intect-client = poncoocr.api.client:main'
+            'intect = intect.api.cli:main',
+            'intect-client = intect.api.client:main'
         ],
     },
 

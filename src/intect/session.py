@@ -8,8 +8,8 @@ import tensorflow as tf
 from collections import namedtuple
 from tensorflow.contrib.tensorboard.plugins import projector
 
-from poncoocr import utils
-from poncoocr import config
+from intect import utils
+from intect import config
 
 EmbeddingInput = namedtuple(typename='EmbeddingInput', field_names=['features', 'labels', 'embedding_input'])
 

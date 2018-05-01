@@ -1,4 +1,4 @@
-"""Module containing common variables and configurations for poncoocr modules."""
+"""Module containing common variables and configurations for intect modules."""
 
 import os
 import tensorflow as tf

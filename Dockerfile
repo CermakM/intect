@@ -5,7 +5,7 @@ FROM python:3.6-stretch
 # ---
 # Environment
 # ---
-ENV PROJECT poncoocr
+ENV PROJECT intect
 
 ENV CODE_DIR /code
 ENV ARCH_DIR ${CODE_DIR}/src/data/architectures

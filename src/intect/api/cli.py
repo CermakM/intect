@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Main module encapsulating poncoocr logic."""
+"""Main module encapsulating intect logic."""
 
 import json
 import os
@@ -8,7 +8,7 @@ import sys
 import time
 import tensorflow as tf
 
-import poncoocr as pcr
+import intect
 
 
 FLAGS = tf.app.flags.FLAGS
@@ -115,12 +115,12 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
 
     # Initialize datasets
     if FLAGS.train:
-        train_dataset = pcr.dataset.Dataset.from_directory(FLAGS.train_dir)
+        train_dataset = intect.dataset.Dataset.from_directory(FLAGS.train_dir)
     else:
         train_dataset = None
 
     if FLAGS.eval:
-        test_dataset = pcr.dataset.Dataset.from_directory(FLAGS.test_dir)
+        test_dataset = intect.dataset.Dataset.from_directory(FLAGS.test_dir)
     else:
         test_dataset = None
 
@@ -128,20 +128,20 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
     for arch_file in architectures:
 
         if FLAGS.json:
-            arch = pcr.architecture.ModelArchitecture.from_json(fp=arch_file)
+            arch = intect.architecture.ModelArchitecture.from_json(fp=arch_file)
         else:
-            arch = pcr.architecture.ModelArchitecture.from_yaml(fp=arch_file)
+            arch = intect.architecture.ModelArchitecture.from_yaml(fp=arch_file)
 
-        estimator = pcr.estimator.Estimator(
+        estimator = intect.estimator.Estimator(
             model_architecture=arch,
             train_data=train_dataset,
             test_data=test_dataset,
-            model_dir=FLAGS.model_dir or pcr.utils.make_hparam_string(arch)
+            model_dir=FLAGS.model_dir or intect.utils.make_hparam_string(arch)
         )
 
         if FLAGS.predict:
             images = [
-                pcr.utils.preprocess_image(image_file=img_file)
+                intect.utils.preprocess_image(image_file=img_file)
                 for img_file in FLAGS.images
             ]
 

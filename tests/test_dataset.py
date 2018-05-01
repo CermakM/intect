@@ -6,7 +6,7 @@ import unittest
 import numpy as np
 import tensorflow as tf
 
-import poncoocr as pcr
+import intect
 from . import config
 
 
@@ -15,15 +15,15 @@ class TestDirectoryIterator(unittest.TestCase):
 
     def test_directory_iterator(self):
         """Test that the dataset is created properly from directory."""
-        dir_iter = pcr.dataset.DirectoryIterator(directory=config.TEST_DATASET_PATH)
+        dir_iter = intect.dataset.DirectoryIterator(directory=config.TEST_DATASET_PATH)
         dir_iter.describe()
 
-        self.assertIsInstance(dir_iter, pcr.dataset.DirectoryIterator)
+        self.assertIsInstance(dir_iter, intect.dataset.DirectoryIterator)
         self.assertFalse(dir_iter.empty, msg="DirectoryIterator is empty.")
 
     def test_directory_iterator_len(self):
         """Test if all the images are loaded into the dataset."""
-        dir_iter = pcr.dataset.DirectoryIterator(directory=config.TEST_DATASET_PATH)
+        dir_iter = intect.dataset.DirectoryIterator(directory=config.TEST_DATASET_PATH)
         dir_iter.describe()
 
         expected_len = 0
@@ -34,7 +34,7 @@ class TestDirectoryIterator(unittest.TestCase):
 
     def test_diretory_iterator_iter(self):
         """Test that the DirectoryIterator suports the `iter()` protocol."""
-        dir_iter = pcr.dataset.DirectoryIterator(directory=config.TEST_DATASET_PATH)
+        dir_iter = intect.dataset.DirectoryIterator(directory=config.TEST_DATASET_PATH)
         dir_iter.describe()
 
         iter(dir_iter)
@@ -45,15 +45,15 @@ class TestDataset(unittest.TestCase):
 
     def test_dataset_from_directory(self):
         """Test that dataset loaded successfully."""
-        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
-        self.assertIsInstance(dataset, pcr.dataset.Dataset)
+        dataset = intect.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
+        self.assertIsInstance(dataset, intect.dataset.Dataset)
         # dataset is not empty and contains features and labels
         self.assertTrue(dataset.features.any())
         self.assertTrue(dataset.labels.any())
 
     def test_dataset_iterator_values(self):
         """Test that the iterator produces correct shapes during tf.Session."""
-        dataset = pcr.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
+        dataset = intect.dataset.Dataset.from_directory(config.TEST_DATASET_PATH)
         iterator = dataset.make_one_shot_iterator(batch_size=32)
         # iterate over the labels twice and check the shape
         with tf.Session() as sess:

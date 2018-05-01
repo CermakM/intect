@@ -6,7 +6,7 @@ FROM python:3.6-stretch
 # ---
 # Environment
 # ---
-ENV PROJECT poncoocr
+ENV PROJECT intect
 
 ENV CODE_DIR /code
 ENV API_DIR ${CODE_DIR}/src/${PROJECT}/api
