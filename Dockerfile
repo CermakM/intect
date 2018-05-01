@@ -1,6 +1,6 @@
-FROM python:3.6-jessie
+FROM python:3.6-stretch
 
-# Dockerfile for TensorFlow Serving deployment.
+# Dockerfile for complete TensorFlow Serving deployment.
 
 # ---
 # Environment
@@ -28,7 +28,6 @@ ADD . /code
 RUN pip install -r requirements.txt
 RUN python setup.py install
 
-
 # ---
 # Tensorflow Serving
 # ---
@@ -40,12 +39,17 @@ RUN apt-get -y update && \
     apt-get -y install tensorflow-model-server && \
     apt-get -y upgrade tensorflow-model-server
 
+
+RUN apt-get -y install supervisor
+
+# ---
+# TensorBoard
+# ---
+EXPOSE 6006
+
 # ---
 # Model server
 # ---
 EXPOSE 9000
-RUN tensorflow_model_server --model_config_file=${SERVER_CONFIG} --port 9000 &> server.log &
 
-
-ENTRYPOINT ["$CLIENT"]
-CMD ["--help"]
+CMD tensorflow_model_server --model_config_file=${SERVER_CONFIG} --port 9000

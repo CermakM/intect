@@ -53,8 +53,8 @@ setup(
 
     entry_points={
         'console_scripts': [
-            'intect = poncoocr.api:main',
-            'intect-client = poncoocr.serving.client:main'
+            'intect = poncoocr.api.cli:main',
+            'intect-client = poncoocr.api.client:main'
         ],
     },
 

@@ -79,10 +79,6 @@ def _format_error_msg(rc_name, r_detail, request):
 
 # noinspection PyUnusedLocal
 def main(*args, **kwargs):  # pylint: disable=unused-argument
-    if FLAGS.help:
-        print(FLAGS.get_help())
-        sys.exit(0)
-
     if FLAGS.images is None:
         print("`--images` parameter not proved", file=sys.stderr)
         sys.exit(1)

@@ -10,6 +10,9 @@ import tensorflow as tf
 
 import poncoocr as pcr
 
+
+FLAGS = tf.app.flags.FLAGS
+
 # enable logging
 tf.logging.set_verbosity(tf.logging.INFO)
 
@@ -75,16 +78,10 @@ tf.app.flags.DEFINE_integer(
     help="Number of training steps. This means the number of batches that is the model being trained on."
 )
 
-FLAGS = tf.app.flags.FLAGS
-
 
 # noinspection PyUnusedLocal,PyUnusedLocal
 def main(*args, **kwargs):  # pylint: disable=unused-argument
     """Function running main application logic."""
-    if FLAGS.help:
-        print(FLAGS.get_help())
-        exit(0)
-
     if not any([FLAGS.train, FLAGS.eval, FLAGS.export, FLAGS.predict]):
         print("Either `train`, `eval`, `predict` or `export` flag must be specified.", file=sys.stderr)
         print(FLAGS.get_help())
