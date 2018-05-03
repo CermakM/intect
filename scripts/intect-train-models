@@ -1,0 +1,88 @@
+#!/bin/env python3
+"""Parallel training and evaluation of multiple models."""
+
+import argparse
+import glob
+import multiprocessing
+import os
+import shlex
+import subprocess
+import sys
+
+TRAIN_EPOCHS = os.environ.get('TRAIN_EPOCHS', 2)
+
+
+def _train_model(train_dir, test_dir, model_arch):
+    cmd = (
+        "intect --train --eval --train_dir={train_dir} --test_dir={test_dir} --model_arch={model_arch} "
+        "--train_epochs={epochs}"
+    )
+
+    cmd = shlex.split(cmd.format(
+            train_dir=train_dir,
+            test_dir=test_dir,
+            model_arch=model_arch,
+            epochs=TRAIN_EPOCHS
+    ))
+
+    # call the process
+    process = subprocess.Popen(cmd, stdout=sys.stdout, stderr=sys.stderr)
+    ret_code = process.wait()
+
+    return os.getpid(), ret_code
+
+
+def train_model(root_dir: str):
+    train_dir = os.path.join(root_dir, 'train_data')
+    test_dir = os.path.join(root_dir, 'test_data')
+
+    model_arch, = glob.glob1(root_dir, '*.yaml')
+    model_arch = os.path.join(root_dir, model_arch)
+
+    return _train_model(
+        train_dir=train_dir,
+        test_dir=test_dir,
+        model_arch=model_arch
+    )
+
+
+def parse_args(argv):
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        'model_dir',
+        nargs='+',
+        help="Directories containing models."
+    )
+
+    return parser.parse_args(argv)
+
+
+def main(argv):
+    args = parse_args(argv)
+
+    # split processes among available CPUs
+    cpu_count = multiprocessing.cpu_count()
+    pool = multiprocessing.Pool(processes=cpu_count)
+
+    results = list()
+
+    def _callback(result):
+        pid, ret_val = result
+        results.append(result)
+        print(f"Process {pid} finished with exit code {ret_val}", file=sys.stderr)
+
+    model_dirs = list()
+    for arg in args.model_dir:
+        # glob the passed directories first
+        model_dirs.extend(glob.glob(arg))
+
+    for root_dir in model_dirs:
+        pool.apply_async(train_model, args=[root_dir], callback=_callback)
+
+    # close the pool as no more tasks will be submitted
+    pool.close()
+    pool.join()
+
+
+if __name__ == '__main__':
+    main(sys.argv[1:])

@@ -9,9 +9,12 @@ FROM python:3.6-stretch
 ENV PROJECT intect
 
 ENV CODE_DIR /code
+ENV PATH "$PATH:$CODE_DIR" # export the path to project for the interpreter
+
 ENV API_DIR ${CODE_DIR}/src/${PROJECT}/api
 
 ENV CLI ${API_DIR}/cli.py
+
 
 ADD . /code
 WORKDIR /code
@@ -21,11 +24,10 @@ WORKDIR /code
 # ---
 
 RUN pip install -r requirements.txt
-RUN python setup.py install
 
 # ---
 # TensorBoard
 # ---
 EXPOSE 6006
 
-CMD tensorboard --logdir=/code/.model_cache
+tensorboard --logdir="$CODE_DIR/.model_cache"

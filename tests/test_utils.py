@@ -69,4 +69,3 @@ class TestUtils(unittest.TestCase):
 
         self.assertIsNotNone(classes)
         self.assertEqual(len(classes), len(dataset))
-

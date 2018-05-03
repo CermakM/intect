@@ -7,8 +7,8 @@ import typing
 import numpy as np
 import tensorflow as tf
 
+from intect import config
 from intect.architecture import ModelArchitecture
-from intect.config import EMBEDDING_TENSORS, EMBEDDING_SIZE, IMAGE_SHAPE, LABEL_TENSOR_PROTO_FP
 from intect.dataset import Dataset
 from intect.model import Model
 from intect.session import EmbeddingHook, HookModes
@@ -63,7 +63,7 @@ class Estimator(object):
             default_embedding_size = tf.flags.FLAGS.embedding_size
         else:
             # set an implicit value in case no other declaration found
-            default_embedding_size = EMBEDDING_SIZE
+            default_embedding_size = config.EMBEDDING_SIZE
 
         self._embedding_size = self._params.get('embedding_size', default_embedding_size)
 
@@ -90,9 +90,9 @@ class Estimator(object):
         # create embedding hook
         self._embedding_hook = EmbeddingHook(
             tensors=[
-                EMBEDDING_TENSORS.BATCH_FEATURES,
-                EMBEDDING_TENSORS.BATCH_LABELS,
-                EMBEDDING_TENSORS.EMBEDDING_INPUT,
+                config.EMBEDDING_TENSORS.BATCH_FEATURES,
+                config.EMBEDDING_TENSORS.BATCH_LABELS,
+                config.EMBEDDING_TENSORS.EMBEDDING_INPUT,
             ],
             embedding_size=self._embedding_size,
             class_dct=classes,
@@ -250,7 +250,7 @@ class Estimator(object):
             export_dir_base=export_dir,
             serving_input_receiver_fn=tf.estimator.export.build_raw_serving_input_receiver_fn(
                 features={
-                    'x': tf.placeholder(shape=(None, *IMAGE_SHAPE, 1),
+                    'x': tf.placeholder(shape=(None, *config.IMAGE_SHAPE, 1),
                                         dtype=tf.float32)
                 }
             )
@@ -358,7 +358,7 @@ class Estimator(object):
 
         if mode == tf.estimator.ModeKeys.PREDICT:
             # restore class array from serialized tensor proto
-            label_tensor = self._tensor_from_proto(os.path.join(self._cache_dir, LABEL_TENSOR_PROTO_FP))
+            label_tensor = self._tensor_from_proto(os.path.join(self._cache_dir, config.LABEL_TENSOR_PROTO_FP))
 
             # create lookup table
             lookup_cls_table = index_to_string_table_from_tensor(label_tensor)
@@ -393,7 +393,7 @@ class Estimator(object):
 
             # export class metadata for prediction mode
             label_data = np.array([v for k, v in sorted(self.classes.items())], dtype=np.unicode_)
-            self._export_tensor_proto(label_data)
+            self._export_tensor_proto(proto_path=config.LABEL_TENSOR_PROTO_FP, tensor_data=label_data)
 
             cross_entropy = tf.nn.softmax_cross_entropy_with_logits_v2(
                 labels=model.labels,
@@ -406,9 +406,9 @@ class Estimator(object):
             tf.summary.scalar('train_loss', loss)
 
             # add to the graph the tensors which will be fetched by EmbeddingHook
-            tf.identity(model.x, EMBEDDING_TENSORS.BATCH_FEATURES)
-            tf.identity(model.labels, EMBEDDING_TENSORS.BATCH_LABELS)
-            tf.identity(model.hidden_layers[-1], EMBEDDING_TENSORS.EMBEDDING_INPUT)
+            tf.identity(model.x, config.EMBEDDING_TENSORS.BATCH_FEATURES)
+            tf.identity(model.labels, config.EMBEDDING_TENSORS.BATCH_LABELS)
+            tf.identity(model.hidden_layers[-1], config.EMBEDDING_TENSORS.EMBEDDING_INPUT)
 
             # initialize optimizer
             optimizer = model.optimizer(learning_rate=model.learning_rate)
@@ -466,12 +466,12 @@ class Estimator(object):
 
         return spec
 
-    def _export_tensor_proto(self, tensor_data: np.ndarray):
+    def _export_tensor_proto(self, proto_path, tensor_data: np.ndarray):
         """Serialize and export metadata to a file as a tensor proto.
 
         The exported file will be placed into the `model_dir` as <fname>.proto (by default label_meta.proto)
         """
-        fp = os.path.join(self._cache_dir, LABEL_TENSOR_PROTO_FP)
+        fp = os.path.join(self._cache_dir, proto_path)
 
         with open(fp, 'wb') as meta:
             # create tensor proto

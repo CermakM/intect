@@ -8,6 +8,8 @@ FROM python:3.6-stretch
 ENV PROJECT intect
 
 ENV CODE_DIR /code
+ENV PATH "$PATH:$CODE_DIR"
+
 ENV ARCH_DIR ${CODE_DIR}/src/data/architectures
 ENV API_DIR ${CODE_DIR}/src/${PROJECT}/api
 
@@ -26,7 +28,6 @@ WORKDIR /code
 ADD . /code
 
 RUN pip install -r requirements.txt
-RUN python setup.py install
 
 # ---
 # Tensorflow Serving
@@ -46,6 +47,8 @@ RUN apt-get -y install supervisor
 # TensorBoard
 # ---
 EXPOSE 6006
+
+RUN tensorboard --logdir="$CODE_DIR/.model_cache" &> tensorboard.log &
 
 # ---
 # Model server

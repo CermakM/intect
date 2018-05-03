@@ -51,10 +51,14 @@ setup(
     package_dir={'': 'src'},
     packages=find_packages(where='src'),
 
+    scripts = [
+        'scripts/train-models',
+    ],
+
     entry_points={
         'console_scripts': [
             'intect = intect.api.cli:main',
-            'intect-client = intect.api.client:main'
+            'intect-client = intect.api.client:main',
         ],
     },
 
