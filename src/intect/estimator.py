@@ -26,12 +26,19 @@ class Estimator(object):
     __model_cache_dir = '.model_cache/'
 
     def __init__(self,
-                 model_architecture: ModelArchitecture,
+                 model_architecture: typing.Union[str, ModelArchitecture],
                  train_data: Dataset=None,
                  test_data: Dataset=None,
                  model_fn=None,
                  model_dir=None,
                  params: dict = None):
+
+        if isinstance(model_architecture, str):
+            if not os.path.isfile(model_architecture):
+                raise FileNotFoundError("str passed as `model_architecture`, but no such file was found.\n"
+                                        "Either use a valid path to configuration file, or consider using "
+                                        "class `ModelArchitecture`.")
+            model_architecture = ModelArchitecture.from_yaml(model_architecture)
 
         self._arch = model_architecture
         self._train_data = train_data
@@ -47,13 +54,12 @@ class Estimator(object):
         # create model specific sub directory in cache dir
         self._cache_dir = model_dir
         if self._cache_dir is None:
-            self._cache_dir = tempfile.mkdtemp(dir=os.path.join(self.__model_cache_dir),
+            self._cache_dir = tempfile.mkdtemp(dir=os.path.abspath(self.__model_cache_dir),
                                                prefix='arch_',
                                                suffix='_%s' % self._arch.name)
         else:
-            self._cache_dir = os.path.join(self.__model_cache_dir, self._cache_dir)
             if not os.path.isdir(self._cache_dir):
-                os.mkdir(path=self._cache_dir)
+                os.makedirs(path=self._cache_dir, exist_ok=True)
 
         self._embedding_dir = os.path.join(self._cache_dir, 'projector')
         if not os.path.isdir(self._embedding_dir):
@@ -125,7 +131,7 @@ class Estimator(object):
     def train(self, train_data: Dataset = None, steps=None, num_epochs=1, buffer_size=None, hooks=None):
         """Train the estimator.
 
-        :param train_data: Dataset, Dataset to be used
+        :param train_data: Dataset, dataset to be used
 
             Dataset class or object implementing `features` and `labels` properties
             Will be fed into the input_fn.
@@ -225,19 +231,27 @@ class Estimator(object):
 
         return results
 
-    def predict(self, images: list) -> typing.Generator:
+    def predict(self, images: typing.Union[list, Dataset]) -> typing.Generator:
         """Produces class predictions about list of images given by `images`.
 
         :param images: list containing images to predict
 
         :returns: generator yielding per-image predictions
         """
-        if not isinstance(images, list):
-            raise TypeError("Expected type `list`, got `{}`".format(type(images)))
+        if isinstance(images, list):
 
-        predictions = self._estimator.predict(
-            input_fn=lambda: self._predict_input_fn(images=images)
-        )
+            predictions = self._estimator.predict(
+                input_fn=lambda: self._predict_input_fn(images=images)
+            )
+
+        elif isinstance(images, Dataset):
+
+            predictions = self._estimator.predict(
+                input_fn=lambda: self._dataset_input_fn(dataset=images, repeat=1, shuffle=False)
+            )
+
+        else:
+            raise TypeError("Expected type `list` or `Dataset`, got `{}`".format(type(images)))
 
         return predictions
 
@@ -292,6 +306,9 @@ class Estimator(object):
                           buffer_size=None) -> tf.data.Dataset:
         """Input function for the estimator.
         Loads the dataset from a directory given by `path` and returns tuple ({'x': features}, {'labels': labels)."""
+        if not isinstance(dataset, Dataset):
+            raise TypeError(f"Argument `dataset` expected to be of type {Dataset}, got {type(dataset)}")
+
         buffer_size = buffer_size or len(dataset)
 
         tf_dataset = tf.data.Dataset.from_tensor_slices((dict(x=dataset.features), dataset.labels))
@@ -299,8 +316,7 @@ class Estimator(object):
         if shuffle:
             tf_dataset = tf_dataset.shuffle(buffer_size=buffer_size or len(dataset))
 
-        if batch_size:
-            tf_dataset = tf_dataset.batch(batch_size=batch_size or self._arch.batch_size)
+        tf_dataset = tf_dataset.batch(batch_size=batch_size or self._arch.batch_size)
 
         return tf_dataset
 
@@ -376,6 +392,7 @@ class Estimator(object):
                 mode=mode,
                 predictions={
                     'cls': cls,
+                    'cls_id': y_pred_cls,
                     'score': y_pred_score,
                 },
                 export_outputs={

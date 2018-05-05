@@ -35,8 +35,6 @@ setup(
 
     classifiers=[
         "Development Status :: 1 - Planning"
-        "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.4",
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Topic :: Utilities",
@@ -52,7 +50,7 @@ setup(
     packages=find_packages(where='src'),
 
     scripts = [
-        'scripts/train-models',
+        'scripts/intect-train-models',
     ],
 
     entry_points={
