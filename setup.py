@@ -34,7 +34,7 @@ setup(
                      " provided API.",
 
     classifiers=[
-        "Development Status :: 1 - Planning"
+        "Development Status :: 2 - Pre-Alpha"
         "Programming Language :: Python :: 3.5",
         "Programming Language :: Python :: 3.6",
         "Topic :: Utilities",
