@@ -59,7 +59,7 @@ class Estimator(object):
                                                suffix='_%s' % self._arch.name)
         else:
             if not os.path.isdir(self._cache_dir):
-                os.makedirs(path=self._cache_dir, exist_ok=True)
+                os.makedirs(self._cache_dir, exist_ok=True)
 
         self._embedding_dir = os.path.join(self._cache_dir, 'projector')
         if not os.path.isdir(self._embedding_dir):

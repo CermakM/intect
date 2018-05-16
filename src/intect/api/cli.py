@@ -146,7 +146,8 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
             ]
 
             predictions = list(estimator.predict(images=images))
-            print(json.dumps(predictions, indent=4))
+
+            print(predictions)
 
         # Training
         if FLAGS.train:
