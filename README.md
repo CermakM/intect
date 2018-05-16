@@ -1,6 +1,6 @@
 # intect
 
-### Neural network architect
+### Intelligent neural network architect
 
 <br>
 
