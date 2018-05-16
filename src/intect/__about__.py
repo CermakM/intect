@@ -7,7 +7,7 @@ __title__ = "intect"
 __summary__ = "Neural network architect."
 __uri__ = "https://github.com/CermakM/ponco-ocr"
 
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 __author__ = "Marek Cermak"
 __email__ = "prace.mcermak@gmail.com"
