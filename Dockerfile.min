@@ -24,10 +24,11 @@ WORKDIR /code
 # ---
 
 RUN pip install -r requirements.txt
+RUN python setup.py install
 
 # ---
 # TensorBoard
 # ---
 EXPOSE 6006
 
-tensorboard --logdir="$CODE_DIR/.model_cache"
+CMD tensorboard --logdir="$CODE_DIR/.model_cache"

@@ -1,7 +1,8 @@
 version: '3'
 
 services:
-    intect_cli:
+    intect:
+        container_name: intect
         build:
             context: .
             dockerfile: Dockerfile
@@ -10,3 +11,4 @@ services:
             - "9000:9000"
         volumes:
             - .:/code:z
+        tty: True
