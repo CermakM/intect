@@ -58,6 +58,7 @@ class Estimator(object):
                                                prefix='arch_',
                                                suffix='_%s' % self._arch.name)
         else:
+            self._cache_dir = os.path.join(self.__model_cache_dir, self._cache_dir)
             if not os.path.isdir(self._cache_dir):
                 os.makedirs(self._cache_dir, exist_ok=True)
 
