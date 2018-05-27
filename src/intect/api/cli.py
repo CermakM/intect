@@ -162,8 +162,13 @@ def main(*args, **kwargs):  # pylint: disable=unused-argument
 
         # Evaluation
         if FLAGS.eval:
+            start = time.time()
+            tf.logging.info('Evaluating the architecture: `%s`' % arch.name)
+
             evaluation = estimator.evaluate()
+
             print('Model evaluation after %d epochs: %s' % (FLAGS.train_epochs, evaluation))
+            tf.logging.info("Evaluation took: {time} s.".format(time=time.time() - start))
 
         # Export
         if FLAGS.export:
