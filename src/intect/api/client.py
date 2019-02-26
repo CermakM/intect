@@ -55,7 +55,13 @@ tf.app.flags.DEFINE_list(
 tf.app.flags.DEFINE_list(
     name='signatures',
     default=['prediction', 'confidence'],
-    help="Image or comma separated list of images."
+    help="""Image or comma separated list of signatures to use.
+    Possible signatures:
+    - prediction: predicted output
+    - confidence: float representing confidence of the correct prediction
+    - classes: other candidates considered in the decision making process
+    - scores: scores for the other candidates
+    """
 )
 
 
